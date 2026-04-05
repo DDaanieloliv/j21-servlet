@@ -1,23 +1,29 @@
 package io.ddaaniel.header;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * HttpMsg
  */
 public class HttpMsg implements Runnable {
 
-	public HttpMsg() { }
+	private final BlockingQueue<String> queue;
+
+	public HttpMsg(BlockingQueue<String> q) { queue = q; }
+	public HttpMsg() { this.queue = new LinkedBlockingQueue<>(); }
 
 	public void run() {
 		try {
-			Path path = Paths.get("/home/daniel/personal/tmp/httpfromtcp/messages.txt");
+			Path path = Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt");
 			InputStream st = Files.newInputStream(path);
 
 			ByteBuffer buf = ByteBuffer.allocate(1024);
@@ -25,32 +31,33 @@ public class HttpMsg implements Runnable {
 
 			while (true) {
 				if (st.read(part) == -1) break;
-
+				queue.put(getLinesChannel(part, buf));
 			}
 			st.close();
-		} catch (Exception e) {}
+		} catch (InterruptedException | IOException e) { e.printStackTrace();}
 	}
 
+	// TODO: fix the java.nio.BufferOverflowException caused by the flag 'idxN' which doesn't change
+	// TODO: the method should return BlockingQueue<String> on his implementation
 	public String getLinesChannel(byte[] part, ByteBuffer buf) {
-			int idxN = indexOf(part, 10);
+			int idxN = indexOf(part, 10); 
 
-			if (idxN != -1) {
-				buf.put(part, 0, idxN);
-				buf.flip();
-				String line = StandardCharsets.UTF_8.decode(buf).toString();
-				buf.clear();
-				if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
+			for (;;) 
+				if (idxN != -1) {
+					buf.put(part, 0, idxN);
+					buf.flip();
+					String line = StandardCharsets.UTF_8.decode(buf).toString();
+					buf.clear();
+					if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
 
-				System.out.printf("read: %s\n", line);
-				return line;
-			} else {
-				buf.put(part, 0, part.length);
-			} 
+					System.out.printf("read: %s\n", line);
+					return line;
+				} else buf.put(part, 0, part.length); 
 	}
 
 	public void getLinesChannel() {
 		try {
-			Path path = Paths.get("/home/daniel/personal/tmp/httpfromtcp/messages.txt");
+			Path path = Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt");
 			InputStream st = Files.newInputStream(path);
 
 			byte[] part = new byte[8];
@@ -71,7 +78,7 @@ public class HttpMsg implements Runnable {
 				} else buf.put(part, 0, part.length);
 			}
 			st.close();
-		} catch (Exception e) {}
+		} catch (IOException e) { }
 	}
 
 	public void getLineChannel(String s) {
@@ -124,14 +131,14 @@ public class HttpMsg implements Runnable {
 	}
 
 
-	public static int indexOf(byte[] bytes, int character) {
+	private static int indexOf(byte[] bytes, int character) {
 		for (int i = 0; i < bytes.length; i++)
 			if (bytes[i] == character)
 				return i;
 		return -1;
 	}
 
-	public static int indexOf(ByteBuffer buff, int character) {
+	private static int indexOf(ByteBuffer buff, int character) {
 		for (int i = 0; i < buff.capacity(); i++)
 			if (buff.get(i) == character)
 				return i;
