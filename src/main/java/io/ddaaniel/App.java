@@ -1,22 +1,21 @@
 package io.ddaaniel;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import io.ddaaniel.header.HttpMsg;
+import io.ddaaniel.channel.LinesChannel;
 
 public class App {
 	public static void main(String[] args) {
 
-		BlockingQueue<String> q = new LinkedBlockingQueue<>();
-		var channel = new HttpMsg(q);
+		var lines = new LinkedBlockingQueue<String>();
+		var channel = new LinesChannel(lines);
 		new Thread(channel).start();
 
 		for (;;) {
 			try {
-				System.out.println(q.take());
+				System.out.println(lines.take());
 			} catch (Exception e) { e.printStackTrace(); }
-			if (q.size() == 0) break;
+			if (lines.size() == 0) break;
 		}
 	}
 }

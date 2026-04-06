@@ -1,4 +1,4 @@
-package io.ddaaniel.header;
+package io.ddaaniel.channel;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -12,14 +12,14 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * HttpMsg
+ * LinesChannel
  */
-public class HttpMsg implements Runnable {
+public class LinesChannel implements Runnable {
 
 	private final BlockingQueue<String> queue;
 
-	public HttpMsg(BlockingQueue<String> q) { queue = q; }
-	public HttpMsg() { this.queue = new LinkedBlockingQueue<>(); }
+	public LinesChannel(BlockingQueue<String> q) { queue = q; }
+	public LinesChannel() { this.queue = new LinkedBlockingQueue<>(); }
 
 	public void run() {
 		try {
