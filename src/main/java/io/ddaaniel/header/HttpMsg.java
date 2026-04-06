@@ -27,32 +27,41 @@ public class HttpMsg implements Runnable {
 			InputStream st = Files.newInputStream(path);
 
 			ByteBuffer buf = ByteBuffer.allocate(1024);
-			byte[] part = new byte[8];
 
 			while (true) {
-				if (st.read(part) == -1) break;
-				queue.put(getLinesChannel(part, buf));
+				if (st.available() == 0) break;
+				queue.put( getLinesChannel(st, buf) );
 			}
 			st.close();
-		} catch (InterruptedException | IOException e) { e.printStackTrace();}
+		} catch (Exception e) { e.printStackTrace();}
 	}
 
 	// TODO: fix the java.nio.BufferOverflowException caused by the flag 'idxN' which doesn't change
 	// TODO: the method should return BlockingQueue<String> on his implementation
-	public String getLinesChannel(byte[] part, ByteBuffer buf) {
-			int idxN = indexOf(part, 10); 
+	// TODO: in case of persist this implementation, changes are required to the stop condition to the while loop in run() 
+	public String getLinesChannel(InputStream st, ByteBuffer buf) {
+			byte[] part = new byte[8];
 
-			for (;;) 
-				if (idxN != -1) {
-					buf.put(part, 0, idxN);
-					buf.flip();
-					String line = StandardCharsets.UTF_8.decode(buf).toString();
-					buf.clear();
-					if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
+			try {
+				for (;;) {
+					if (st.read(part) == -1) break;
+					int idxN = indexOf(part, 10); 
 
-					System.out.printf("read: %s\n", line);
-					return line;
-				} else buf.put(part, 0, part.length); 
+					if (idxN != -1) {
+						buf.put(part, 0, idxN);
+						buf.flip();
+						String line = StandardCharsets.UTF_8.decode(buf).toString();
+						buf.clear();
+						if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
+
+						// System.out.printf("read: %s\n", line);
+						return line;
+
+					} else buf.put(part, 0, part.length); 
+				}
+			} catch (Exception e) { e.printStackTrace(); }
+
+			return "should never be reached";
 	}
 
 	public void getLinesChannel() {

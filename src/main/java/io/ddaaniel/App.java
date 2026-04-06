@@ -12,8 +12,11 @@ public class App {
 		var channel = new HttpMsg(q);
 		new Thread(channel).start();
 
-		for (String string : q) {
-				System.out.println(string);
+		for (;;) {
+			try {
+				System.out.println(q.take());
+			} catch (Exception e) { e.printStackTrace(); }
+			if (q.size() == 0) break;
 		}
 	}
 }
