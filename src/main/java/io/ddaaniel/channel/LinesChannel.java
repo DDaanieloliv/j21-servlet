@@ -1,6 +1,7 @@
 package io.ddaaniel.channel;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -18,22 +19,23 @@ import com.sun.org.apache.xpath.internal.operations.String;
  */
 public class LinesChannel implements Runnable {
 
+	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
 	private final BlockingQueue<String> queue;
 	private final InputStream stream;
 	private final Path path;
 
-
 	public LinesChannel(BlockingQueue<String> queue, InputStream stream, Path path) 
 	{ this.queue = queue; this.stream = stream; this.path = path; }
 
-	// TODO: should be created a function that fill the inputStream and handle the IOException without modify the constructor 
 	public LinesChannel(Path path) 
 	{ 
 		this.queue = new LinkedBlockingQueue<>(); 
 		this.path = path;
-		this.stream = Files.newInputStream(path); 
+		this.stream = setInputStream(path); 
 	}
-	
+
+	// TODO: implementing the actual behavior to run(), which first calls doChannel()
+	// and then starts a loop that calls getLinesChannel until all lines in the file have been read
 	public void run() {
 		try {
 			Path path = Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt");
@@ -48,12 +50,20 @@ public class LinesChannel implements Runnable {
 			st.close();
 		} catch (Exception e) { e.printStackTrace();}
 	}
+	
+	public InputStream setInputStream(Path path) {
+		try {
+			return Files.newInputStream(path);
+		} catch (Exception e) {	
+			throw new RuntimeException("Não foi possível abrir o arquivo", e);
+		}
+	}
 
 	public BlockingQueue<String> doChannel() {
 		BlockingQueue<String> chan = new LinkedBlockingQueue<>();
 
 		try {
-			// chan.put(getLinesChannel(st, buf));
+			chan.put(getLinesChannel(stream, buf));
 		} catch (Exception e) { }
 
 		return chan;
