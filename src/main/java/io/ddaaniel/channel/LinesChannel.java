@@ -11,16 +11,29 @@ import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.sun.org.apache.xpath.internal.operations.String;
+
 /**
  * LinesChannel
  */
 public class LinesChannel implements Runnable {
 
 	private final BlockingQueue<String> queue;
+	private final InputStream stream;
+	private final Path path;
 
-	public LinesChannel(BlockingQueue<String> q) { queue = q; }
-	public LinesChannel() { this.queue = new LinkedBlockingQueue<>(); }
 
+	public LinesChannel(BlockingQueue<String> queue, InputStream stream, Path path) 
+	{ this.queue = queue; this.stream = stream; this.path = path; }
+
+	// TODO: should be created a function that fill the inputStream and handle the IOException without modify the constructor 
+	public LinesChannel(Path path) 
+	{ 
+		this.queue = new LinkedBlockingQueue<>(); 
+		this.path = path;
+		this.stream = Files.newInputStream(path); 
+	}
+	
 	public void run() {
 		try {
 			Path path = Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt");
@@ -34,6 +47,16 @@ public class LinesChannel implements Runnable {
 			}
 			st.close();
 		} catch (Exception e) { e.printStackTrace();}
+	}
+
+	public BlockingQueue<String> doChannel() {
+		BlockingQueue<String> chan = new LinkedBlockingQueue<>();
+
+		try {
+			// chan.put(getLinesChannel(st, buf));
+		} catch (Exception e) { }
+
+		return chan;
 	}
 
 	// TODO: fix the java.nio.BufferOverflowException caused by the flag 'idxN' which doesn't change
