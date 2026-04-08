@@ -1,7 +1,7 @@
 package io.ddaaniel.channel;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -12,67 +12,76 @@ import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import com.sun.org.apache.xpath.internal.operations.String;
-
 /**
  * LinesChannel
  */
-public class LinesChannel implements Runnable {
+public class LinesChannel {
 
 	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
-	private final BlockingQueue<String> queue;
+	private final BlockingQueue<String> chan;
 	private final InputStream stream;
-	private final Path path;
 
-	public LinesChannel(BlockingQueue<String> queue, InputStream stream, Path path) 
-	{ this.queue = queue; this.stream = stream; this.path = path; }
+	public LinesChannel(Path path, BlockingQueue<String> chan, InputStream stream) 
+	{ 
+		this.chan = chan; 
+		this.stream = stream; 
+	}
 
 	public LinesChannel(Path path) 
 	{ 
-		this.queue = new LinkedBlockingQueue<>(); 
-		this.path = path;
+		this.chan = new LinkedBlockingQueue<>(); 
 		this.stream = setInputStream(path); 
 	}
 
-	// TODO: implementing the actual behavior to run(), which first calls doChannel()
-	// and then starts a loop that calls getLinesChannel until all lines in the file have been read
-	public void run() {
+	public static InputStream setInputStream(Path path) {
 		try {
-			Path path = Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt");
-			InputStream st = Files.newInputStream(path);
-
-			ByteBuffer buf = ByteBuffer.allocate(1024);
-
-			while (true) {
-				if (st.available() == 0) break;
-				queue.put( getLinesChannel(st, buf) );
-			}
-			st.close();
-		} catch (Exception e) { e.printStackTrace();}
-	}
-	
-	public InputStream setInputStream(Path path) {
-		try {
-			return Files.newInputStream(path);
-		} catch (Exception e) {	
-			throw new RuntimeException("Não foi possível abrir o arquivo", e);
+			return new BufferedInputStream(Files.newInputStream(path));
+		} catch (IOException e) {	
+			throw new RuntimeException("There is not possible open the file", e);
 		}
 	}
 
-	public BlockingQueue<String> doChannel() {
-		BlockingQueue<String> chan = new LinkedBlockingQueue<>();
+	private static int indexOf(byte[] bytes, int character) {
+		for (int i = 0; i < bytes.length; i++)
+			if (bytes[i] == character)
+				return i;
+		return -1;
+	}
 
-		try {
-			chan.put(getLinesChannel(stream, buf));
-		} catch (Exception e) { }
+	private static int indexOf(ByteBuffer buff, int character) {
+		for (int i = 0; i < buff.capacity(); i++)
+			if (buff.get(i) == character)
+				return i;
+		return -1;
+	}
+
+	public BlockingQueue<String> doChannel() {
+
+		new Thread( () -> {
+			try {
+				while (true) {
+					if (stream.markSupported()) 
+					{
+						stream.mark(1);
+						if (stream.read() == -1) break;
+						stream.reset();
+					}
+					chan.put( getLinesChannel(stream, buf) );
+				}
+				stream.close();
+			} catch (InterruptedException | IOException e) { }
+		}).start();
 
 		return chan;
 	}
 
-	// TODO: fix the java.nio.BufferOverflowException caused by the flag 'idxN' which doesn't change
-	// TODO: the method should return BlockingQueue<String> on his implementation
-	// TODO: in case of persist this implementation, changes are required to the stop condition to the while loop in run() 
-	public String getLinesChannel(InputStream st, ByteBuffer buf) {
+	// TODO: instead InputStream SeekableByteChannel.class(Files.newByteChannel()) 
+	// we will use Files.newByteChannel() as the return of setInputStream() to 
+	// obtain better functions provided by SeekableByteChannel class that allow
+	// a better stopping condition for the loop in doChannel() insteand of 
+	// InputStream which were converted to BufferedInputStream to provide acceptable 
+	// functoins for stopping condition in doChannel()
+	private String getLinesChannel(InputStream st, ByteBuffer buf) {
 			byte[] part = new byte[8];
 
 			try {
@@ -87,7 +96,6 @@ public class LinesChannel implements Runnable {
 						buf.clear();
 						if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
 
-						// System.out.printf("read: %s\n", line);
 						return line;
 
 					} else buf.put(part, 0, part.length); 
@@ -170,20 +178,5 @@ public class LinesChannel implements Runnable {
 			}
 			st.close();
 		} catch (Exception e) {}
-	}
-
-
-	private static int indexOf(byte[] bytes, int character) {
-		for (int i = 0; i < bytes.length; i++)
-			if (bytes[i] == character)
-				return i;
-		return -1;
-	}
-
-	private static int indexOf(ByteBuffer buff, int character) {
-		for (int i = 0; i < buff.capacity(); i++)
-			if (buff.get(i) == character)
-				return i;
-		return -1;
 	}
 }
