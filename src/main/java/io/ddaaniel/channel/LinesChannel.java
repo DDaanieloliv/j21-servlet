@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,19 +19,34 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class LinesChannel {
 
 	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
+	private static final ByteBuffer part = ByteBuffer.allocate(8);
 	private final BlockingQueue<String> chan;
 	private final InputStream stream;
+	private final SeekableByteChannel sChannel;
 
-	public LinesChannel(Path path, BlockingQueue<String> chan, InputStream stream) 
+	public LinesChannel(
+			BlockingQueue<String> chan,
+			InputStream stream,
+			SeekableByteChannel sChannel) 
 	{ 
 		this.chan = chan; 
 		this.stream = stream; 
+		this.sChannel = sChannel;
 	}
 
 	public LinesChannel(Path path) 
 	{ 
 		this.chan = new LinkedBlockingQueue<>(); 
+		this.sChannel = setByteChannel(path);
 		this.stream = setInputStream(path); 
+	}
+
+	public static SeekableByteChannel setByteChannel(Path path) {
+		try {
+			return Files.newByteChannel(path);
+		} catch (IOException e) {	
+			throw new RuntimeException("There is not possible open the file", e);
+		}
 	}
 
 	public static InputStream setInputStream(Path path) {
@@ -55,6 +71,42 @@ public class LinesChannel {
 		return -1;
 	}
 
+	public BlockingQueue<String> getLineChannel() {
+
+		new Thread( () -> {
+			try {
+				for (;;) {
+					if (sChannel.read(part) == -1) break;
+					part.flip(); // pointer = 0; and limit = last_position
+					int idxN = indexOf(part, 10); 
+					int partSize = part.capacity();
+
+					if (idxN != -1) {
+						part.limit(idxN);
+						buf.put(part);
+						part.limit(partSize);
+						buf.flip(); // pointer = 0; and limit = last_position;
+						String line = StandardCharsets.UTF_8.decode(buf).toString();
+
+						buf.clear(); // restore pointer = 0; and limit = capacity;
+						part.position(part.position() + 1);
+
+						if ((partSize - (idxN + 1)) > 0) buf.put(part); 
+						part.clear();
+						chan.put(line);
+
+					} else {
+						buf.put(part); 
+						part.clear();
+					}
+				}
+			} catch (Exception e) { e.printStackTrace(); }
+		} ).start();
+
+			return chan;
+	}
+
+
 	public BlockingQueue<String> doChannel() {
 
 		new Thread( () -> {
@@ -75,12 +127,6 @@ public class LinesChannel {
 		return chan;
 	}
 
-	// TODO: instead InputStream SeekableByteChannel.class(Files.newByteChannel()) 
-	// we will use Files.newByteChannel() as the return of setInputStream() to 
-	// obtain better functions provided by SeekableByteChannel class that allow
-	// a better stopping condition for the loop in doChannel() insteand of 
-	// InputStream which were converted to BufferedInputStream to provide acceptable 
-	// functoins for stopping condition in doChannel()
 	private String getLinesChannel(InputStream st, ByteBuffer buf) {
 			byte[] part = new byte[8];
 
