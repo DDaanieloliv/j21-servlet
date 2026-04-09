@@ -22,7 +22,6 @@ public class LinesChannel {
 	private static final ByteBuffer part = ByteBuffer.allocate(8);
 	private final BlockingQueue<String> chan;
 	private final InputStream stream;
-	private final SeekableByteChannel sChannel;
 
 	public LinesChannel(
 			BlockingQueue<String> chan,
@@ -31,14 +30,18 @@ public class LinesChannel {
 	{ 
 		this.chan = chan; 
 		this.stream = stream; 
-		this.sChannel = sChannel;
 	}
 
 	public LinesChannel(Path path) 
 	{ 
 		this.chan = new LinkedBlockingQueue<>(); 
-		this.sChannel = setByteChannel(path);
 		this.stream = setInputStream(path); 
+	}
+
+	public LinesChannel() 
+	{ 
+		this.chan = new LinkedBlockingQueue<>(); 
+		this.stream = setInputStream(Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt")); 
 	}
 
 	public static SeekableByteChannel setByteChannel(Path path) {
@@ -71,39 +74,47 @@ public class LinesChannel {
 		return -1;
 	}
 
-	public BlockingQueue<String> getLineChannel() {
+	// TODO: update this function to setup the dependencies, to allowing remove the class fields
+	public BlockingQueue<String> getLinesChannel(String s) {
 
-		new Thread( () -> {
-			try {
-				for (;;) {
-					if (sChannel.read(part) == -1) break;
-					part.flip(); // pointer = 0; and limit = last_position
-					int idxN = indexOf(part, 10); 
-					int partSize = part.capacity();
+		try {
+			SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
+			
+			new Thread( () -> {
+				try {
+					for (;;) {
+						if (sChannel.read(part) == -1) break;
+						part.flip(); // pointer = 0; and limit = last_position
+						int idxN = indexOf(part, 10); 
+						int partSize = part.capacity();
 
-					if (idxN != -1) {
-						part.limit(idxN);
-						buf.put(part);
-						part.limit(partSize);
-						buf.flip(); // pointer = 0; and limit = last_position;
-						String line = StandardCharsets.UTF_8.decode(buf).toString();
+						if (idxN != -1) {
+							part.limit(idxN);
+							buf.put(part);
+							part.limit(partSize);
+							buf.flip(); // pointer = 0; and limit = last_position;
+							String line = StandardCharsets.UTF_8.decode(buf).toString();
 
-						buf.clear(); // restore pointer = 0; and limit = capacity;
-						part.position(part.position() + 1);
+							buf.clear(); // restore pointer = 0; and limit = capacity;
+							part.position(part.position() + 1);
 
-						if ((partSize - (idxN + 1)) > 0) buf.put(part); 
-						part.clear();
-						chan.put(line);
+							if ((partSize - (idxN + 1)) > 0) buf.put(part); 
+							part.clear();
+							chan.put(line);
 
-					} else {
-						buf.put(part); 
-						part.clear();
+						} else {
+							buf.put(part); 
+							part.clear();
+						}
 					}
-				}
-			} catch (Exception e) { e.printStackTrace(); }
-		} ).start();
 
-			return chan;
+					sChannel.close();
+				} catch (Exception e) { e.printStackTrace(); }
+			} ).start();
+
+		} catch (Exception e) { e.printStackTrace(); }
+
+		return chan;
 	}
 
 
