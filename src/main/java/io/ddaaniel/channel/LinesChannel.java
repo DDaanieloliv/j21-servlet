@@ -78,7 +78,7 @@ public class LinesChannel {
 		return chann;
 	}
 
-
+	// TODO: implementing the usage of ByteBuffer instead of byte[] and reflect about the conversion to BufferedInputStream, since that the function doChannel() don't exist anymore
 	public BlockingQueue<String> getLineChannel_InputStreamAndByteBuffer(String s) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
