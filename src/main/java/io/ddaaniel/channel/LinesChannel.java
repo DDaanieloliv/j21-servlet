@@ -21,46 +21,23 @@ public class LinesChannel {
 	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
 	private static final ByteBuffer part = ByteBuffer.allocate(8);
 
-	private final BlockingQueue<String> chan;
-	private final InputStream stream;
+	// private final BlockingQueue<String> chan;
+	// private final InputStream stream;
 
 	public LinesChannel(
-			BlockingQueue<String> chan,
-			InputStream stream,
-			SeekableByteChannel sChannel) 
+			SeekableByteChannel sChannel
+			// BlockingQueue<String> chan,
+			// InputStream stream
+			) 
 	{ 
-		this.chan = chan; 
-		this.stream = stream; 
-	}
-
-	public LinesChannel(Path path) 
-	{ 
-		this.chan = new LinkedBlockingQueue<>(); 
-		this.stream = setInputStream(path); 
+		// this.chan = chan; 
+		// this.stream = stream; 
 	}
 
 	public LinesChannel() 
 	{ 
-		this.chan = new LinkedBlockingQueue<>(); 
-		this.stream = setInputStream(Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt")); 
-	}
-
-	public static SeekableByteChannel setByteChannel(Path path) {
-		try {
-			return Files.newByteChannel(path);
-		} catch (IOException e) {	
-			throw new RuntimeException("There is not possible open the file", e);
-		}
-	}
-
-
-
-	public static InputStream setInputStream(Path path) {
-		try {
-			return new BufferedInputStream(Files.newInputStream(path));
-		} catch (IOException e) {	
-			throw new RuntimeException("There is not possible open the file", e);
-		}
+		// this.chan = new LinkedBlockingQueue<>(); 
+		// this.stream = setInputStream(Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt")); 
 	}
 
 	private static int indexOf(byte[] bytes, int character) {
@@ -78,16 +55,13 @@ public class LinesChannel {
 	}
 
 
-
-
 	public BlockingQueue<String> getLineChannel(String s) {
 		BlockingQueue<String> chann = new LinkedBlockingQueue<>();
 
-		try {
-			SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
-			
 			new Thread( () -> {
 				try {
+
+					SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
 					for (;;) {
 						if (sChannel.read(part) == -1) break;
 						part.flip(); // pointer = 0; and limit = last_position
@@ -113,44 +87,25 @@ public class LinesChannel {
 							part.clear();
 						}
 					}
-
 					sChannel.close();
+
 				} catch (Exception e) { e.printStackTrace(); }
 			} ).start();
-
-		} catch (Exception e) { e.printStackTrace(); }
 
 		return chann;
 	}
 
 
-
-
-
-	public BlockingQueue<String> doChannel() {
+	public BlockingQueue<String> getLineChannel_InputStreamAndByteBuffer(String s) {
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
 			try {
-				while (true) {
-					if (stream.markSupported()) 
-					{
-						stream.mark(1);
-						if (stream.read() == -1) break;
-						stream.reset();
-					}
-					chan.put( getLinesChannel(stream, buf) );
-				}
-				stream.close();
-			} catch (InterruptedException | IOException e) { }
-		}).start();
 
-		return chan;
-	}
+				InputStream st = new BufferedInputStream(Files.newInputStream(Paths.get(s)));
+				byte[] part = new byte[8];
+				ByteBuffer buf = ByteBuffer.allocate(1024);
 
-	private String getLinesChannel(InputStream st, ByteBuffer buf) {
-			byte[] part = new byte[8];
-
-			try {
 				for (;;) {
 					if (st.read(part) == -1) break;
 					int idxN = indexOf(part, 10); 
@@ -162,87 +117,116 @@ public class LinesChannel {
 						buf.clear();
 						if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
 
-						return line;
+						channel.put(line);
 
 					} else buf.put(part, 0, part.length); 
 				}
+
 			} catch (Exception e) { e.printStackTrace(); }
+		}).start();
 
-			return "should never be reached";
+		return channel;
 	}
 
-	public void getLinesChannel() {
-		try {
-			Path path = Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt");
-			InputStream st = Files.newInputStream(path);
 
-			byte[] part = new byte[8];
-			ByteBuffer buf = ByteBuffer.allocate(1024);
+	public BlockingQueue<String> getLineChannel_ByteBuffer(String s) {
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
-			for (;;) {
-				if (st.read(part) == -1) break;
-				int idxN = indexOf(part, 10);
+		new Thread( () -> {
+			try {
 
-				if (idxN != -1) {
-					buf.put(part, 0, idxN);
-					buf.flip();
-					String line = StandardCharsets.UTF_8.decode(buf).toString();
-					buf.clear();
-					if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
+				Path path = Paths.get(s);
+				InputStream st = Files.newInputStream(path);
+				byte[] part = new byte[8];
+				ByteBuffer buf = ByteBuffer.allocate(1024);
 
-					System.out.printf("read: %s\n", line);
-				} else buf.put(part, 0, part.length);
-			}
-			st.close();
-		} catch (IOException e) { }
-	}
+				for (;;) {
+					if (st.read(part) == -1) break;
+					int idxN = indexOf(part, 10);
 
-	public void getLinesChannel(String s) {
-		try {
-			Path path = Paths.get("/home/daniel/personal/tmp/httpfromtcp/messages.txt");
-			InputStream st = Files.newInputStream(path);
+					if (idxN != -1) {
+						buf.put(part, 0, idxN);
+						buf.flip();
+						String line = StandardCharsets.UTF_8.decode(buf).toString();
+						buf.clear();
+						if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
 
-			byte[] part = new byte[8];
-			ByteArrayOutputStream LINE = new ByteArrayOutputStream();
+						channel.put(line);
 
-			for (;;) {
-				if (st.read(part) == -1) break;
-				int idxBckSlask = indexOf(part, 10);
-
-				if (idxBckSlask != -1) {
-					LINE.write(part, 0, idxBckSlask);
-					System.out.printf("read: %s\n", LINE);
-					LINE.reset();
-					LINE.write(part, idxBckSlask + 1, (part.length - 1) - idxBckSlask);
+					} else buf.put(part, 0, part.length);
 				}
-				else LINE.write(part);
-			}
-			st.close();
-		} catch (Exception e) {}
+				st.close();
+
+			} catch (IOException | InterruptedException e) { }
+		}).start();
+
+		return channel;
 	}
 
 
-	public void getLineChannel(Path p) {
-		try {
-			Path path = Paths.get("/home/daniel/personal/tmp/httpfromtcp/messages.txt");
-			InputStream st = Files.newInputStream(path);
+	public BlockingQueue<String> getLineChannel_ByteArrayOutputStram(String s) {
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
-			byte[] part = new byte[8];
-			StringBuilder line = new StringBuilder();
+		new Thread( () -> {
+			try {
 
-			for (;;) {
-				if (st.read(part) == -1) break;
-				int idxBckSlask = indexOf(part, 10);
+				Path path = Paths.get(s);
+				InputStream st = Files.newInputStream(path);
+				byte[] part = new byte[8];
+				ByteArrayOutputStream LINE = new ByteArrayOutputStream();
 
-				if (idxBckSlask != -1) {
-					line.append(new String(part, 0, idxBckSlask, StandardCharsets.UTF_8));
-					System.out.printf("read: %s\n", line);
-					line.delete(0, line.length());
-					line.append((new String(part, idxBckSlask + 1, (part.length - 1) - idxBckSlask, StandardCharsets.UTF_8)));
+				for (;;) {
+					if (st.read(part) == -1) break;
+					int idxBckSlask = indexOf(part, 10);
+
+					if (idxBckSlask != -1) {
+						LINE.write(part, 0, idxBckSlask);
+
+						channel.put(LINE.toString());
+
+						LINE.reset();
+						LINE.write(part, idxBckSlask + 1, (part.length - 1) - idxBckSlask);
+					}
+					else LINE.write(part);
 				}
-				else line.append(new String(part));
-			}
-			st.close();
-		} catch (Exception e) {}
+				st.close();
+
+			} catch (Exception e) {}
+		}).start();
+
+		return channel;
+	}
+
+
+	public BlockingQueue<String> getLineChannel_StringBuilder(String s) {
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
+
+		new Thread( () -> {
+			try {
+
+				Path path = Paths.get(s);
+				InputStream st = Files.newInputStream(path);
+
+				byte[] part = new byte[8];
+				StringBuilder line = new StringBuilder();
+
+				for (;;) {
+					if (st.read(part) == -1) break;
+					int idxBckSlask = indexOf(part, 10);
+
+					if (idxBckSlask != -1) {
+						line.append(new String(part, 0, idxBckSlask, StandardCharsets.UTF_8));
+						System.out.printf("read: %s\n", line);
+						line.delete(0, line.length());
+						line.append((new String(part, idxBckSlask + 1, (part.length - 1) - idxBckSlask, StandardCharsets.UTF_8)));
+					}
+					else line.append(new String(part));
+				}
+				st.close();
+
+			} catch (Exception e) {}
+		}).start();
+
+		return channel;
 	}
 }
