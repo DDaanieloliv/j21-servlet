@@ -6,7 +6,7 @@ import io.ddaaniel.channel.LinesChannel;
 public class App {
 	public static void main(String[] args) {
 
-		var chann = new LinesChannel().getLinesChannel("/home/daniel/personal/dev/httpfromtcp/messages.txt");
+		var chann = new LinesChannel().getLineChannel("/home/daniel/personal/dev/httpfromtcp/messages.txt");
 
 		for (;;) {
 			try {

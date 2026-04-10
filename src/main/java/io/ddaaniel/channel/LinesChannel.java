@@ -20,6 +20,7 @@ public class LinesChannel {
 
 	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
 	private static final ByteBuffer part = ByteBuffer.allocate(8);
+
 	private final BlockingQueue<String> chan;
 	private final InputStream stream;
 
@@ -52,6 +53,8 @@ public class LinesChannel {
 		}
 	}
 
+
+
 	public static InputStream setInputStream(Path path) {
 		try {
 			return new BufferedInputStream(Files.newInputStream(path));
@@ -74,8 +77,11 @@ public class LinesChannel {
 		return -1;
 	}
 
-	// TODO: update this function to setup the dependencies, to allowing remove the class fields
-	public BlockingQueue<String> getLinesChannel(String s) {
+
+
+
+	public BlockingQueue<String> getLineChannel(String s) {
+		BlockingQueue<String> chann = new LinkedBlockingQueue<>();
 
 		try {
 			SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
@@ -100,7 +106,7 @@ public class LinesChannel {
 
 							if ((partSize - (idxN + 1)) > 0) buf.put(part); 
 							part.clear();
-							chan.put(line);
+							chann.put(line);
 
 						} else {
 							buf.put(part); 
@@ -114,8 +120,11 @@ public class LinesChannel {
 
 		} catch (Exception e) { e.printStackTrace(); }
 
-		return chan;
+		return chann;
 	}
+
+
+
 
 
 	public BlockingQueue<String> doChannel() {
@@ -188,7 +197,7 @@ public class LinesChannel {
 		} catch (IOException e) { }
 	}
 
-	public void getLineChannel(String s) {
+	public void getLinesChannel(String s) {
 		try {
 			Path path = Paths.get("/home/daniel/personal/tmp/httpfromtcp/messages.txt");
 			InputStream st = Files.newInputStream(path);
