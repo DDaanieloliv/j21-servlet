@@ -21,24 +21,7 @@ public class LinesChannel {
 	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
 	private static final ByteBuffer part = ByteBuffer.allocate(8);
 
-	// private final BlockingQueue<String> chan;
-	// private final InputStream stream;
-
-	public LinesChannel(
-			SeekableByteChannel sChannel
-			// BlockingQueue<String> chan,
-			// InputStream stream
-			) 
-	{ 
-		// this.chan = chan; 
-		// this.stream = stream; 
-	}
-
-	public LinesChannel() 
-	{ 
-		// this.chan = new LinkedBlockingQueue<>(); 
-		// this.stream = setInputStream(Paths.get("/home/daniel/personal/dev/httpfromtcp/messages.txt")); 
-	}
+	public LinesChannel() {}
 
 	private static int indexOf(byte[] bytes, int character) {
 		for (int i = 0; i < bytes.length; i++)

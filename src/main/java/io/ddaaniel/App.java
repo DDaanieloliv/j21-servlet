@@ -6,13 +6,13 @@ import io.ddaaniel.channel.LinesChannel;
 public class App {
 	public static void main(String[] args) {
 
-		var chann = new LinesChannel().getLineChannel("/home/daniel/personal/dev/httpfromtcp/messages.txt");
+		var channel = new LinesChannel().getLineChannel("/home/daniel/personal/dev/httpfromtcp/messages.txt");
 
 		for (;;) {
 			try {
-				System.out.println(chann.take());
+				System.out.println(channel.take());
 			} catch (InterruptedException e) { e.printStackTrace(); }
-			if (chann.size() == 0) break;
+			if (channel.size() == 0) break;
 		}
 	}
 }
