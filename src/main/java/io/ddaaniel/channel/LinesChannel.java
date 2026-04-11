@@ -1,6 +1,5 @@
 package io.ddaaniel.channel;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -78,33 +77,43 @@ public class LinesChannel {
 		return chann;
 	}
 
-	// TODO: implementing the usage of ByteBuffer instead of byte[] and reflect about the conversion to BufferedInputStream, since that the function doChannel() don't exist anymore
-	public BlockingQueue<String> getLineChannel_InputStreamAndByteBuffer(String s) {
+	public BlockingQueue<String> getLineChannel_IptSt(String s) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
 			try {
 
-				InputStream st = new BufferedInputStream(Files.newInputStream(Paths.get(s)));
-				byte[] part = new byte[8];
-				ByteBuffer buf = ByteBuffer.allocate(1024);
+				InputStream st = Files.newInputStream(Paths.get(s));
+				byte[] arrAux = new byte[8];
 
 				for (;;) {
-					if (st.read(part) == -1) break;
-					int idxN = indexOf(part, 10); 
+					if (st.read(arrAux) == -1) break;
+					int idxN = indexOf(arrAux, 10); 
+					int partSize = part.capacity();
+					part.put(arrAux);
+					part.flip();
 
 					if (idxN != -1) {
-						buf.put(part, 0, idxN);
+						part.limit(idxN);
+						buf.put(part);
+						part.limit(partSize);
 						buf.flip();
 						String line = StandardCharsets.UTF_8.decode(buf).toString();
+						part.position(part.position() + 1);
 						buf.clear();
-						if ((part.length - (idxN + 1)) > 0) buf.put(part, idxN + 1, part.length - (idxN + 1));
+
+						if ((partSize - (idxN + 1)) > 0) buf.put(part);
+						part.clear();
 
 						channel.put(line);
 
-					} else buf.put(part, 0, part.length); 
+					} else {
+						buf.put(part); 
+						part.clear();
+					}
 				}
-
+				st.close();
+				
 			} catch (Exception e) { e.printStackTrace(); }
 		}).start();
 
