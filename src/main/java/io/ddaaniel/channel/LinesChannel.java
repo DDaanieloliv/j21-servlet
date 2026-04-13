@@ -3,6 +3,7 @@ package io.ddaaniel.channel;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +20,7 @@ public class LinesChannel {
 
 	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
 	private static final ByteBuffer part = ByteBuffer.allocate(8);
+	private static final byte[] arrAux = new byte[8];
 
 	public LinesChannel() {}
 
@@ -77,39 +79,35 @@ public class LinesChannel {
 		return chann;
 	}
 
-	public BlockingQueue<String> getLineChannel_IptSt(String s) {
+	public BlockingQueue<String> getLineChannel(Socket conn) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
 			try {
 
-				InputStream st = Files.newInputStream(Paths.get(s));
-				byte[] arrAux = new byte[8];
+				// InputStream st = Files.newInputStream(Paths.get(path));
+				InputStream st = conn.getInputStream();
 
 				for (;;) {
 					if (st.read(arrAux) == -1) break;
 					int idxN = indexOf(arrAux, 10); 
-					int partSize = part.capacity();
-					part.put(arrAux);
-					part.flip();
 
 					if (idxN != -1) {
-						part.limit(idxN);
-						buf.put(part);
-						part.limit(partSize);
+						buf.put(arrAux, 0, idxN);
 						buf.flip();
 						String line = StandardCharsets.UTF_8.decode(buf).toString();
-						part.position(part.position() + 1);
 						buf.clear();
 
-						if ((partSize - (idxN + 1)) > 0) buf.put(part);
-						part.clear();
+						var posAfterN = idxN + 1;
 
+						if ( ((arrAux.length - 1) - idxN) > 0) 
+						{
+							buf.put( arrAux, posAfterN, ((arrAux.length - 1) - idxN) );
+						}
 						channel.put(line);
 
 					} else {
-						buf.put(part); 
-						part.clear();
+						buf.put(arrAux); 
 					}
 				}
 				st.close();
