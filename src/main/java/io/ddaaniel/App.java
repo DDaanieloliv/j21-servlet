@@ -1,6 +1,7 @@
 package io.ddaaniel;
 
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -16,14 +17,12 @@ public class App {
 				Socket conn = serverSocket.accept();
 				var channel = new LinesChannel().getLineChannel(conn);
 
-				try {
-					System.out.println("read: " + channel.take());
-				} catch (InterruptedException e) { e.printStackTrace(); }
+				System.out.println("read: " + channel.take());
 				if (channel.size() == 0) break;
 			}
 
 			serverSocket.close();
-		} catch (Exception e) { }
+		} catch (IOException | InterruptedException e) { }
 
 	}
 }

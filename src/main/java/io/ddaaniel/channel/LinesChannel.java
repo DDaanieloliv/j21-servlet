@@ -85,38 +85,31 @@ public class LinesChannel {
 		new Thread( () -> {
 			try {
 
-				// InputStream st = Files.newInputStream(Paths.get(path));
 				InputStream st = conn.getInputStream();
 
 				for (;;) {
 					int readed = st.read(arrAux);
-					if ( readed == -1) break;
+					if (readed == -1) break;
 					int idxN = indexOf(arrAux, 10); 
 
 					if (idxN != -1) {
 						buf.put(arrAux, 0, idxN);
 						buf.flip();
-						String line = StandardCharsets.UTF_8.decode(buf).toString();
+						channel.put(StandardCharsets.UTF_8.decode(buf).toString());
 						buf.clear();
-
-						var posAfterN = idxN + 1;
 
 						if ( ((arrAux.length - 1) - idxN) > 0) 
 						{
-							buf.put( arrAux, posAfterN, ((arrAux.length - 1) - idxN) );
+							buf.put( arrAux, (idxN + 1), ((arrAux.length - 1) - idxN) );
 						}
-						channel.put(line);
 
-					} else {
-						buf.put(arrAux, 0, readed); 
-					}
+					} else buf.put(arrAux, 0, readed);
 				}
 
 				if (buf.position() > 0) 
 				{
 					buf.flip();
-					String remainingLine = StandardCharsets.UTF_8.decode(buf).toString();
-					channel.put(remainingLine);
+					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
 					buf.clear();
 				}
 				st.close();
