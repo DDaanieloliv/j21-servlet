@@ -89,7 +89,8 @@ public class LinesChannel {
 				InputStream st = conn.getInputStream();
 
 				for (;;) {
-					if (st.read(arrAux) == -1) break;
+					int readed = st.read(arrAux);
+					if ( readed == -1) break;
 					int idxN = indexOf(arrAux, 10); 
 
 					if (idxN != -1) {
@@ -107,8 +108,16 @@ public class LinesChannel {
 						channel.put(line);
 
 					} else {
-						buf.put(arrAux); 
+						buf.put(arrAux, 0, readed); 
 					}
+				}
+
+				if (buf.position() > 0) 
+				{
+					buf.flip();
+					String remainingLine = StandardCharsets.UTF_8.decode(buf).toString();
+					channel.put(remainingLine);
+					buf.clear();
 				}
 				st.close();
 				
