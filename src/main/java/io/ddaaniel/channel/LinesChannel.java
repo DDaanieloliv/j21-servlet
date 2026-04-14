@@ -87,9 +87,9 @@ public class LinesChannel {
 
 				InputStream st = conn.getInputStream();
 
+				int readed;
 				for (;;) {
-					int readed = st.read(arrAux);
-					if (readed == -1) break;
+					if ((readed = st.read(arrAux)) == -1) break;
 					int idxN = indexOf(arrAux, 10); 
 
 					if (idxN != -1) {
@@ -108,6 +108,46 @@ public class LinesChannel {
 
 				if (buf.position() > 0) 
 				{
+					buf.flip();
+					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+					buf.clear();
+				}
+				st.close();
+				
+			} catch (Exception e) { e.printStackTrace(); }
+		}).start();
+
+		return channel;
+	}
+
+	public BlockingQueue<String> getLineChannell(Socket conn) {
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
+
+		new Thread( () -> {
+			try {
+
+				InputStream st = conn.getInputStream();
+
+				int readed;
+				while ((readed = st.read(arrAux)) != -1) {
+					int idxAfterN = 0;
+					for (int idxElmt = 0; idxElmt < readed; idxElmt++){
+						if (arrAux[idxElmt] == 10) {
+							buf.put(arrAux, idxAfterN, idxElmt - idxAfterN);
+							buf.flip();
+
+							channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+							buf.clear();
+							idxAfterN = idxElmt + 1;
+						}
+					}	
+
+					if (idxAfterN < readed) {
+						buf.put(arrAux, idxAfterN, readed - idxAfterN);
+					}
+				}
+
+				if (buf.position() > 0) {
 					buf.flip();
 					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
 					buf.clear();
