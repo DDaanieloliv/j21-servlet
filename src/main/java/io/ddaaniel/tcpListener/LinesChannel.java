@@ -39,44 +39,50 @@ public class LinesChannel {
 	}
 
 
+
 	public BlockingQueue<String> getLineChannel(String s) {
-		BlockingQueue<String> chann = new LinkedBlockingQueue<>();
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
-			new Thread( () -> {
-				try {
+		new Thread( () -> {
+			try {
 
-					SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
-					for (;;) {
-						if (sChannel.read(part) == -1) break;
-						part.flip(); // pointer = 0; and limit = last_position
-						int idxN = indexOf(part, 10); 
-						int partSize = part.capacity();
+				InputStream st = Files.newInputStream(Paths.get(s));
+				int var_entrypoint_check = 0;
 
-						if (idxN != -1) {
-							part.limit(idxN);
-							buf.put(part);
-							part.limit(partSize);
-							buf.flip(); // pointer = 0; and limit = last_position;
-							String line = StandardCharsets.UTF_8.decode(buf).toString();
+				int readed;
+				for (;;) {
+					if ((readed = st.read(arrAux)) == -1) break;
+					int idxN = indexOf(arrAux, 10); 
 
-							buf.clear(); // restore pointer = 0; and limit = capacity;
-							part.position(part.position() + 1);
+					char[] charArr = new String(arrAux, StandardCharsets.UTF_8).toCharArray();
 
-							if ((partSize - (idxN + 1)) > 0) buf.put(part); 
-							part.clear();
-							chann.put(line);
+					if (idxN != -1) {
+						buf.put(arrAux, 0, idxN);
+						buf.flip();
+						channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+						buf.clear();
 
-						} else {
-							buf.put(part); 
-							part.clear();
+						if ( ((readed - 1) - idxN) > 0) 
+						{
+							buf.put( arrAux, (idxN + 1), ((readed - 1) - idxN) );
+							var_entrypoint_check = var_entrypoint_check + 1;
 						}
-					}
-					sChannel.close();
 
-				} catch (Exception e) { e.printStackTrace(); }
-			} ).start();
+					} else buf.put(arrAux, 0, readed);
+				}
 
-		return chann;
+				if (buf.position() > 0) 
+				{
+					buf.flip();
+					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+					buf.clear();
+				}
+				st.close();
+				
+			} catch (Exception e) { e.printStackTrace(); }
+		}).start();
+
+		return channel;
 	}
 
 	public BlockingQueue<String> getLineChannel(Socket conn) {
@@ -98,9 +104,9 @@ public class LinesChannel {
 						channel.put(StandardCharsets.UTF_8.decode(buf).toString());
 						buf.clear();
 
-						if ( ((arrAux.length - 1) - idxN) > 0) 
+						if ( ((readed - 1) - idxN) > 0) 
 						{
-							buf.put( arrAux, (idxN + 1), ((arrAux.length - 1) - idxN) );
+							buf.put( arrAux, (idxN + 1), ((readed - 1) - idxN) );
 						}
 
 					} else buf.put(arrAux, 0, readed);
@@ -120,7 +126,8 @@ public class LinesChannel {
 		return channel;
 	}
 
-	public BlockingQueue<String> getLineChannell(Socket conn) {
+
+	public BlockingQueue<String> lineChannel(Socket conn) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
@@ -161,7 +168,48 @@ public class LinesChannel {
 	}
 
 
-	public BlockingQueue<String> getLineChannel_ByteBuffer(String s) {
+	public BlockingQueue<String> LineChannel(String s) {
+		BlockingQueue<String> chann = new LinkedBlockingQueue<>();
+
+			new Thread( () -> {
+				try {
+
+					SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
+					for (;;) {
+						if (sChannel.read(part) == -1) break;
+						part.flip(); // pointer = 0; and limit = last_position
+						int idxN = indexOf(part, 10); 
+						int partSize = part.capacity();
+
+						if (idxN != -1) {
+							part.limit(idxN);
+							buf.put(part);
+							part.limit(partSize);
+							buf.flip(); // pointer = 0; and limit = last_position;
+							String line = StandardCharsets.UTF_8.decode(buf).toString();
+
+							buf.clear(); // restore pointer = 0; and limit = capacity;
+							part.position(part.position() + 1);
+
+							if ((partSize - (idxN + 1)) > 0) buf.put(part); 
+							part.clear();
+							chann.put(line);
+
+						} else {
+							buf.put(part); 
+							part.clear();
+						}
+					}
+					sChannel.close();
+
+				} catch (Exception e) { e.printStackTrace(); }
+			} ).start();
+
+		return chann;
+	}
+
+
+	public BlockingQueue<String> LineChannel_ByteBuffer(String s) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
@@ -196,7 +244,7 @@ public class LinesChannel {
 	}
 
 
-	public BlockingQueue<String> getLineChannel_ByteArrayOutputStram(String s) {
+	public BlockingQueue<String> LineChannel_ByteArrayOutputStram(String s) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
@@ -230,7 +278,7 @@ public class LinesChannel {
 	}
 
 
-	public BlockingQueue<String> getLineChannel_StringBuilder(String s) {
+	public BlockingQueue<String> LineChannel_StringBuilder(String s) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {

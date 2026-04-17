@@ -3,7 +3,6 @@ package io.ddaaniel;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
 
 import io.ddaaniel.tcpListener.LinesChannel;
 
@@ -12,10 +11,12 @@ public class Cmd {
 
 		try {
 			ServerSocket serverSocket = new ServerSocket(42069);
+			var conn = serverSocket.accept();
+			var channel = new LinesChannel().getLineChannel(conn);
+
+
 
 			for (;;) {
-				Socket conn = serverSocket.accept();
-				var channel = new LinesChannel().getLineChannel(conn);
 
 				System.out.println("read: " + channel.take());
 				if (channel.size() == 0) break;
