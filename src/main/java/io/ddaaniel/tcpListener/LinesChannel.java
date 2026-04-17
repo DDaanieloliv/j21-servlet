@@ -1,4 +1,4 @@
-package io.ddaaniel.channel;
+package io.ddaaniel.tcpListener;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

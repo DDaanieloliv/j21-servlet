@@ -5,9 +5,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import io.ddaaniel.channel.LinesChannel;
+import io.ddaaniel.tcpListener.LinesChannel;
 
-public class App {
+public class Cmd {
 	public static void main(String[] args) {
 
 		try {
