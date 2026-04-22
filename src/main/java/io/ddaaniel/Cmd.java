@@ -11,9 +11,8 @@ public class Cmd {
 
 		try {
 			ServerSocket serverSocket = new ServerSocket(42069);
-			var conn = serverSocket.accept();
-			var channel = new LinesChannel().getLineChannel(conn);
-
+			var conn = "/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/test/java/io/ddaaniel/payload/input/rawget.http";
+			var channel = new LinesChannel().getLinesChannel(conn);
 
 
 			for (;;) {

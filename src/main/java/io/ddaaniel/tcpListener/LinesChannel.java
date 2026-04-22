@@ -40,7 +40,7 @@ public class LinesChannel {
 
 
 
-	public BlockingQueue<String> getLineChannel(String s) {
+	public BlockingQueue<String> getLinesChannel(String s) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
@@ -85,7 +85,7 @@ public class LinesChannel {
 		return channel;
 	}
 
-	public BlockingQueue<String> getLineChannel(Socket conn) {
+	public BlockingQueue<String> getLinesChannel(Socket conn) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
