@@ -42,8 +42,8 @@ public class AppTest {
      */
 		@Test
 		public void shouldReadAPayloadCorrectly() {
-			var inputPathMessage = "/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/test/java/io/ddaaniel/payload/input/messages.txt";
-			var outputResult = "/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/test/java/io/ddaaniel/payload/output/messages.txt";
+			var inputPathMessage = "/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/test/java/io/ddaaniel/payload/input/rawget.http";
+			var outputResult = "/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/test/java/io/ddaaniel/payload/output/rawget.http";
 
 			try {
 
@@ -51,8 +51,8 @@ public class AppTest {
 				var channel = new LinesChannel().getLinesChannel(inputPathMessage);
 				content.forEach( (string) -> {
 					try {
-						assertEquals(string, channel.take());
-					} catch (Exception e) { }
+						assertEquals(string, "read: " + channel.take().trim());
+					} catch (Exception e) { e.printStackTrace(); }
 				});
 				content.close();
 

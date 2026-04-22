@@ -22,7 +22,7 @@ public class Cmd {
 			}
 
 			serverSocket.close();
-		} catch (IOException | InterruptedException e) { }
+		} catch (IOException | InterruptedException e) { e.printStackTrace(); }
 
 	}
 }
