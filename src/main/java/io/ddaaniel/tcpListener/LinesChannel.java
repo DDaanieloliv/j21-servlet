@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +39,99 @@ public class LinesChannel {
 				return i;
 		return -1;
 	}
+
+
+	public BlockingQueue<String> LineChannel(String s) {
+		BlockingQueue<String> chann = new LinkedBlockingQueue<>();
+
+			new Thread( () -> {
+				try {
+
+					SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
+					for (;;) {
+						if (sChannel.read(part) == -1) break;
+						part.flip(); // pointer = 0; and limit = last_position
+						int idxN = indexOf(part, 10); 
+						int partSize = part.capacity();
+
+						if (idxN != -1) {
+							part.limit(idxN);
+							buf.put(part);
+							part.limit(partSize);
+							buf.flip(); // pointer = 0; and limit = last_position;
+							String line = StandardCharsets.UTF_8.decode(buf).toString();
+
+							buf.clear(); // restore pointer = 0; and limit = capacity;
+							part.position(part.position() + 1);
+
+							if ((partSize - (idxN + 1)) > 0) buf.put(part); 
+							part.clear();
+							chann.put(line);
+
+						} else {
+							buf.put(part); 
+							part.clear();
+						}
+					}
+					sChannel.close();
+
+				} catch (Exception e) { e.printStackTrace(); }
+			} ).start();
+
+		return chann;
+	}
+
+
+	public BlockingQueue<String> getLinesChannel(SocketChannel conn) {
+		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
+
+		new Thread( () -> {
+			try {
+
+				var scope_reached = 0;
+				var debug = new char[8];
+
+				int readed;
+				for (;;) {
+					if ((readed = conn.read(part)) == -1) break;
+					part.flip(); // pointer = 0; and limit = last_position
+					int idxN = indexOf(part, 10); 
+
+					debug = new String(part.array(), StandardCharsets.UTF_8).toCharArray();
+
+					if (idxN != -1) {
+						buf.put(part.array(), 0, idxN);
+						buf.flip();
+						channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+						buf.clear();
+
+						if ( ((readed - 1) - idxN) > 0) 
+						{
+							buf.put( part.array(), (idxN + 1), ((readed - 1) - idxN) );
+							part.clear();
+						}
+
+					} else {
+						buf.put(part.array(), 0, readed);
+						part.clear();
+					}
+				}
+
+				if (buf.position() > 0) 
+				{
+					buf.flip();
+					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+					buf.clear();
+				}
+				
+			} catch (Exception e) { e.printStackTrace(); }
+		}).start();
+
+		return channel;
+	}
+
+
+
 
 
 	public BlockingQueue<String> getLinesChannel(InputStream io) {
@@ -88,6 +182,8 @@ public class LinesChannel {
 		return channel;
 	}
 
+
+
 	public BlockingQueue<String> getLinesChannel(Socket conn) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
@@ -96,10 +192,15 @@ public class LinesChannel {
 
 				InputStream st = conn.getInputStream();
 
+				var scope_reached = 0;
+				var debug = new char[8];
+
 				int readed;
 				for (;;) {
 					if ((readed = st.read(arrAux)) == -1) break;
 					int idxN = indexOf(arrAux, 10); 
+
+					debug = new String(arrAux, StandardCharsets.UTF_8).toCharArray();
 
 					if (idxN != -1) {
 						buf.put(arrAux, 0, idxN);
@@ -171,45 +272,6 @@ public class LinesChannel {
 	}
 
 
-	public BlockingQueue<String> LineChannel(String s) {
-		BlockingQueue<String> chann = new LinkedBlockingQueue<>();
-
-			new Thread( () -> {
-				try {
-
-					SeekableByteChannel sChannel = Files.newByteChannel(Paths.get(s));
-					for (;;) {
-						if (sChannel.read(part) == -1) break;
-						part.flip(); // pointer = 0; and limit = last_position
-						int idxN = indexOf(part, 10); 
-						int partSize = part.capacity();
-
-						if (idxN != -1) {
-							part.limit(idxN);
-							buf.put(part);
-							part.limit(partSize);
-							buf.flip(); // pointer = 0; and limit = last_position;
-							String line = StandardCharsets.UTF_8.decode(buf).toString();
-
-							buf.clear(); // restore pointer = 0; and limit = capacity;
-							part.position(part.position() + 1);
-
-							if ((partSize - (idxN + 1)) > 0) buf.put(part); 
-							part.clear();
-							chann.put(line);
-
-						} else {
-							buf.put(part); 
-							part.clear();
-						}
-					}
-					sChannel.close();
-
-				} catch (Exception e) { e.printStackTrace(); }
-			} ).start();
-
-		return chann;
-	}
 
 
 	public BlockingQueue<String> LineChannel_ByteBuffer(String s) {
