@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -39,33 +40,35 @@ public class LinesChannel {
 	}
 
 
-
-	public BlockingQueue<String> getLinesChannel(String s) {
+	public BlockingQueue<String> getLinesChannel(InputStream io) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
 			try {
 
-				InputStream st = Files.newInputStream(Paths.get(s));
-				int var_entrypoint_check = 0;
+				InputStream st = io;
+
+				var scope_reached = 0;
+				var debug = new char[8];
 
 				int readed;
 				for (;;) {
 					if ((readed = st.read(arrAux)) == -1) break;
 					int idxN = indexOf(arrAux, 10); 
 
-					char[] charArr = new String(arrAux, StandardCharsets.UTF_8).toCharArray();
+					debug = new String(arrAux, StandardCharsets.UTF_8).toCharArray();
 
 					if (idxN != -1) {
 						buf.put(arrAux, 0, idxN);
 						buf.flip();
 						channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+						Arrays.fill(arrAux, idxN, idxN + 1, (byte) 0);
 						buf.clear();
 
 						if ( ((readed - 1) - idxN) > 0) 
 						{
 							buf.put( arrAux, (idxN + 1), ((readed - 1) - idxN) );
-							var_entrypoint_check = var_entrypoint_check + 1;
+							scope_reached = scope_reached + 1;
 						}
 
 					} else buf.put(arrAux, 0, readed);
