@@ -1,16 +1,12 @@
 package io.ddaaniel.tcpListener;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -42,8 +38,9 @@ public class LinesChannel {
 
 
 
-
-	public BlockingQueue<String> getLinesChannel(SocketChannel conn) {
+	// TODO: discard the finally implementations by using the content-lenght
+	// TODO: implementing thread-safe approach by using Selectors instead of an new Thread and non-static buffers
+	public BlockingQueue<String> getLinesChannel(ReadableByteChannel conn) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {

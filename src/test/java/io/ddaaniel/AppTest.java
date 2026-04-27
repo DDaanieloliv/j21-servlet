@@ -5,6 +5,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.Pipe;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
@@ -71,37 +72,29 @@ public class AppTest {
     /**
      * Rigorous Test :-)
      */
-		// @Test
-		// public void shouldReadAPayloadCorrectly() throws IOException {
+		@Test
+		public void shouldReadAPayloadCorrectly() throws IOException {
 
-		// 	var serverThread = new Thread( () -> {
+			var mockData = ByteBuffer.wrap(
+					("A society grows great when\n" +
+					 "old men plant trees whose shade\n" +
+					 "they know they shall never sit in.\n" +
+					 "END").getBytes());
 
-		// 		try {
-		// 			var chann = ServerSocketChannel.open().bind(new InetSocketAddress(42069));
-		// 			chann.accept();
-		// 		} catch (IOException e) { e.printStackTrace(); }
+			var pipe = Pipe.open();
+			pipe.sink().write(mockData);
+			pipe.sink().close();
+			var socket = pipe.source();
+			var channel = new LinesChannel().getLinesChannel(socket);
 
-		// 	});
+			try {
 
-		// 	serverThread.start();
+				assertEquals("A society grows great when", channel.poll(500, TimeUnit.MILLISECONDS));
+				assertEquals("old men plant trees whose shade", channel.poll(500, TimeUnit.MILLISECONDS));
+				assertEquals("they know they shall never sit in.", channel.poll(500, TimeUnit.MILLISECONDS));
+				assertEquals("END", channel.poll(500, TimeUnit.MILLISECONDS));
+				
+			} catch (Exception e) { e.printStackTrace(); }
 
-		// 	var lines = new LinesChannel();
-		// 	var mockData = ByteBuffer.wrap("A society grows great when\nold men plant trees whose shade\nthey know they shall never sit in.\nEND".getBytes());
-		// 	var socket = SocketChannel.open(new InetSocketAddress(42069));
-
-		// 	socket.write(mockData);
-		// 	socket.shutdownOutput();	
-		// 	var channel = lines.getLinesChannel(socket);
-
-		// 	try {
-		// 		serverThread.join(1000);
-
-		// 		assertEquals("A society grows great when", channel.poll(500, TimeUnit.MILLISECONDS));
-		// 		assertEquals("old men plant trees whose shade", channel.poll(500, TimeUnit.MILLISECONDS));
-		// 		assertEquals("they know they shall never sit in.", channel.poll(500, TimeUnit.MILLISECONDS));
-		// 		assertEquals("END", channel.poll(500, TimeUnit.MILLISECONDS));
-		// 		
-		// 	} catch (Exception e) { e.printStackTrace(); }
-
-		// }
+		}
 }
