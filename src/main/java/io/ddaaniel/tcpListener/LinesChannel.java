@@ -45,6 +45,8 @@ public class LinesChannel {
 
 		new Thread( () -> {
 			try {
+				// final ByteBuffer buf = ByteBuffer.allocate(1024);
+				// final ByteBuffer part = ByteBuffer.allocate(8);
 
 				var scope_reached = 0;
 				var debug = new char[8];
