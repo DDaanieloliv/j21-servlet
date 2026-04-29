@@ -1,19 +1,11 @@
 package io.ddaaniel;
 
 import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Pipe;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.rmi.ServerError;
 import java.util.Arrays;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -75,7 +67,7 @@ public class AppTest {
      * Rigorous Test :-)
      */
 		@Test
-		public void shouldReadAPayloadCorrectly() throws IOException {
+		public void shouldReadAPayloadIOCorrectly() throws IOException {
 
 			var lines = new ChannelContext(new LinkedBlockingDeque<>());
 			var mockData = ByteBuffer.wrap(
@@ -96,6 +88,44 @@ public class AppTest {
 				assertEquals("old men plant trees whose shade", channel.poll(500, TimeUnit.MILLISECONDS));
 				assertEquals("they know they shall never sit in.", channel.poll(500, TimeUnit.MILLISECONDS));
 				assertEquals("END", channel.poll(500, TimeUnit.MILLISECONDS));
+				
+			} catch (Exception e) { e.printStackTrace(); }
+
+		}
+
+    /**
+     * Rigorous Test :-)
+     */
+		@Test
+		public void shouldReadAPayloadCorrectly() throws IOException {
+
+			var channel = new LinkedBlockingDeque<String>();
+			var reader = new ChannelContext(channel);
+			var mockData = ByteBuffer.wrap(
+					("A society grows great when\n" +
+					 "old men plant trees whose shade\n" +
+					 "they know they shall never sit in.\n" +
+					 "END").getBytes());
+
+			var pipe = Pipe.open();
+			pipe.sink().write(mockData);
+			pipe.sink().close();
+			var socket = pipe.source();
+
+			for (int i = 0; i < 20; i++) {
+				reader.getLinesChannel(socket, reader);
+			}
+
+			try {
+
+				assertEquals("A society grows great when", channel.poll(500, TimeUnit.MILLISECONDS));
+				assertEquals("old men plant trees whose shade", channel.poll(500, TimeUnit.MILLISECONDS));
+				assertEquals("they know they shall never sit in.", channel.poll(500, TimeUnit.MILLISECONDS));
+
+				assertTrue(channel.isEmpty());
+				assertEquals(reader.getBuffer().get(0), (byte) 'E');
+				assertEquals(reader.getBuffer().get(1), (byte) 'N');
+				assertEquals(reader.getBuffer().get(2), (byte) 'D');
 				
 			} catch (Exception e) { e.printStackTrace(); }
 

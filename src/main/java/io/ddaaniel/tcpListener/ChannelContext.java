@@ -54,7 +54,7 @@ public class ChannelContext {
 			var debug = new char[8];
 
 			int readed = conn.read(part);
-			if ((readed = 0) == -1) return;
+			if (readed == -1) return;
 			part.flip();
 			int idxN = indexOf(part, 10); 
 
@@ -84,20 +84,6 @@ public class ChannelContext {
 
 		} 
 		catch (InterruptedException | IOException e) { e.printStackTrace(); }
-		finally { 
-
-			try {
-				if (buf.position() > 0) 
-				{
-					buf.flip();
-					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
-					buf.clear();
-				}
-
-				channel.put("EOF_SIGNAL");
-			} catch (InterruptedException e) { e.printStackTrace(); }
-
-		}
 
 		return;
 	}
@@ -211,47 +197,4 @@ public class ChannelContext {
 
 		return channel;
 	}
-
-
-	public BlockingQueue<String> getLinesChannel(Socket conn) {
-		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
-	  final byte[] arrAux = new byte[8];
-
-		new Thread( () -> {
-			try {
-
-				InputStream st = conn.getInputStream();
-
-				int readed;
-				while ((readed = st.read(arrAux)) != -1) {
-					int idxAfterN = 0;
-					for (int idxElmt = 0; idxElmt < readed; idxElmt++){
-						if (arrAux[idxElmt] == 10) {
-							buf.put(arrAux, idxAfterN, idxElmt - idxAfterN);
-							buf.flip();
-
-							channel.put(StandardCharsets.UTF_8.decode(buf).toString());
-							buf.clear();
-							idxAfterN = idxElmt + 1;
-						}
-					}	
-
-					if (idxAfterN < readed) {
-						buf.put(arrAux, idxAfterN, readed - idxAfterN);
-					}
-				}
-
-				if (buf.position() > 0) {
-					buf.flip();
-					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
-					buf.clear();
-				}
-				st.close();
-				
-			} catch (Exception e) { e.printStackTrace(); }
-		}).start();
-
-		return channel;
-	}
-
 }

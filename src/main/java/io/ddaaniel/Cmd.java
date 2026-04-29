@@ -15,24 +15,23 @@ public class Cmd {
 
 		try {
 			var selector = Selector.open();
-			var serverChannel = ServerSocketChannel.open();
+			var server = ServerSocketChannel.open();
 
-			serverChannel.configureBlocking(false);
-			serverChannel.bind(new InetSocketAddress(42069));
-			serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+			server.configureBlocking(false);
+			server.bind(new InetSocketAddress(42069));
+			server.register(selector, SelectionKey.OP_ACCEPT);
 
 			while (true) {
 
 				selector.select();
-				var setKeys = selector.selectedKeys().iterator();
+				var keySet = selector.selectedKeys().iterator();
 
-				while (setKeys.hasNext()) {
-					var key = setKeys.next();
-					setKeys.remove();
+				while (keySet.hasNext()) {
+					var key = keySet.next();
+					keySet.remove();
 
 					if (key.isAcceptable()) {
-						var server = (ServerSocketChannel) key.channel();
-						SocketChannel socket = server.accept();
+						var socket = ((ServerSocketChannel) key.channel()).accept();
 						socket.configureBlocking(false);
 
 						var queue = new LinkedBlockingQueue<String>();
@@ -45,7 +44,6 @@ public class Cmd {
 								var channel = contextChannel.getQueue();
 								while (true) {
 									String line = channel.take();
-									if ("EOF_SIGNAL".equals(line)) break;
 									System.out.println("read: " + line);
 								}
 							} catch (InterruptedException e) { Thread.currentThread().interrupt(); }
@@ -59,8 +57,6 @@ public class Cmd {
 						context.getLinesChannel(socketChannel, context);
 					}
 				}
-
-				break;
 			}
 
 		} catch (Exception e) { e.printStackTrace(); }
