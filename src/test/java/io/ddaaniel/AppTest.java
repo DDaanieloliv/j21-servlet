@@ -14,12 +14,14 @@ import java.nio.file.Path;
 import java.rmi.ServerError;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.tcpListener.LinesChannel;
+import io.ddaaniel.tcpListener.ChannelContext;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,7 +55,7 @@ public class AppTest {
      */
 		@Test
 		public void shouldReadAInputStreamCorrectly() {
-			var lines = new LinesChannel();
+			var lines = new ChannelContext(new LinkedBlockingQueue<>());
 			var mockData = "A society grows great when\nold men plant trees whose shade\nthey know they shall never sit in.\nEND";
 			var byteStream = new ByteArrayInputStream(mockData.getBytes(StandardCharsets.UTF_8));
 
@@ -75,6 +77,7 @@ public class AppTest {
 		@Test
 		public void shouldReadAPayloadCorrectly() throws IOException {
 
+			var lines = new ChannelContext(new LinkedBlockingDeque<>());
 			var mockData = ByteBuffer.wrap(
 					("A society grows great when\n" +
 					 "old men plant trees whose shade\n" +
@@ -85,7 +88,7 @@ public class AppTest {
 			pipe.sink().write(mockData);
 			pipe.sink().close();
 			var socket = pipe.source();
-			var channel = new LinesChannel().getLinesChannel(socket);
+			var channel = lines.getLinesChannel(socket);
 
 			try {
 

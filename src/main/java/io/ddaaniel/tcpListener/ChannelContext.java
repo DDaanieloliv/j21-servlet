@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
@@ -14,13 +13,18 @@ import java.util.concurrent.LinkedBlockingQueue;
 /**
  * LinesChannel
  */
-public class LinesChannel {
+public class ChannelContext {
 
-	private static final ByteBuffer buf = ByteBuffer.allocate(1024);
-	private static final ByteBuffer part = ByteBuffer.allocate(8);
-	private static final byte[] arrAux = new byte[8];
+	private final ByteBuffer buf = ByteBuffer.allocate(1024);
+	private final ByteBuffer part = ByteBuffer.allocate(8);
+	private final BlockingQueue<String> channel;
 
-	public LinesChannel() {}
+	public ChannelContext(BlockingQueue<String> channel) { this.channel = channel; }
+
+	public BlockingQueue<String> getQueue() { return channel; }
+	public ByteBuffer getBuffer() { return buf; }
+	public ByteBuffer getPart() { return part; }
+
 
 	private static int indexOf(byte[] bytes, int character) {
 		for (int i = 0; i < bytes.length; i++)
@@ -39,14 +43,70 @@ public class LinesChannel {
 
 
 	// TODO: discard the finally implementations by using the content-lenght
-	// TODO: implementing thread-safe approach by using Selectors instead of an new Thread and non-static buffers
+	public void getLinesChannel(ReadableByteChannel conn, ChannelContext context) {
+		var buf = context.buf;
+		var part = context.part;
+		var channel = context.channel;
+
+		try {
+
+			var scope_reached = 0;
+			var debug = new char[8];
+
+			int readed = conn.read(part);
+			if ((readed = 0) == -1) return;
+			part.flip();
+			int idxN = indexOf(part, 10); 
+
+			debug = new String(part.array(), StandardCharsets.UTF_8).toCharArray();
+
+			if (idxN != -1) {
+				part.limit(idxN);
+				buf.put(part);
+				buf.flip();
+				channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+				buf.clear();
+				part.clear();
+
+				if ( ((readed - 1) - idxN) > 0) 
+				{
+					part.position(idxN + 1);
+					buf.put(part);
+					part.clear();
+				}
+
+			} else {
+				part.limit(readed);
+				buf.put(part);
+				part.clear();
+			}
+
+
+		} 
+		catch (InterruptedException | IOException e) { e.printStackTrace(); }
+		finally { 
+
+			try {
+				if (buf.position() > 0) 
+				{
+					buf.flip();
+					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
+					buf.clear();
+				}
+
+				channel.put("EOF_SIGNAL");
+			} catch (InterruptedException e) { e.printStackTrace(); }
+
+		}
+
+		return;
+	}
+
+
 	public BlockingQueue<String> getLinesChannel(ReadableByteChannel conn) {
-		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
 
 		new Thread( () -> {
 			try {
-				// final ByteBuffer buf = ByteBuffer.allocate(1024);
-				// final ByteBuffer part = ByteBuffer.allocate(8);
 
 				var scope_reached = 0;
 				var debug = new char[8];
@@ -105,6 +165,8 @@ public class LinesChannel {
 
 	public BlockingQueue<String> getLinesChannel(InputStream io) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
+	  final byte[] arrAux = new byte[8];
+
 
 		new Thread( () -> {
 			try {
@@ -153,6 +215,7 @@ public class LinesChannel {
 
 	public BlockingQueue<String> getLinesChannel(Socket conn) {
 		BlockingQueue<String> channel = new LinkedBlockingQueue<>();
+	  final byte[] arrAux = new byte[8];
 
 		new Thread( () -> {
 			try {
