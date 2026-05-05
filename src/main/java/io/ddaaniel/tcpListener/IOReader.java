@@ -10,7 +10,7 @@ import java.util.concurrent.BlockingQueue;
 /**
  * Reader
  */
-public abstract class Reader {
+public abstract class IOReader {
 
 
 	public static void readConn(BlockingQueue<String> chann) {
@@ -37,26 +37,30 @@ public abstract class Reader {
 						socket.configureBlocking(false);
 
 						var queue = chann;
-						var contextChannel = new ChannelContext(queue);
+						var context = new Context(queue);
 
-						socket.register(selector, SelectionKey.OP_READ, contextChannel);
+						socket.register(selector, SelectionKey.OP_READ, context);
 
+						// DIRTY STDOUT TO THE LINES IN THE CHANNEL
 						new Thread(() -> {
 							try {
-								var channel = contextChannel.getQueue();
+
 								while (true) {
-									String line = channel.take();
+									var line = queue.take();
 									System.out.println("read: " + line);
 								}
-							} catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+								
+							} catch (Exception e) { e.printStackTrace(); }
 						}).start();
 					}
 
 					if (key.isReadable()) {
 						var socketChannel = (SocketChannel) key.channel();
-						var context = (ChannelContext) key.attachment();
+						var context = (Context) key.attachment();
+						context.attachKeyContext(socketChannel);
 
-						context.getLinesChannel(socketChannel, context);
+						var writer = context;
+						ChannelContext.getLinesChannel(writer);
 					}
 				}
 			}
