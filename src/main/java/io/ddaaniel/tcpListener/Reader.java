@@ -10,10 +10,12 @@ import java.util.concurrent.BlockingQueue;
 /**
  * Reader
  */
-public abstract class IOReader {
+public abstract class Reader {
 
-
-	public static void readConn(BlockingQueue<String> chann) {
+	// TODO: avoid the usage of "GodObject" - Context
+	// TODO: function of unique scope, with Acceptor Loop outside of the function
+	// TODO: handleConnection( BlockingQueue<String> ) -> handleConnection(conn)
+	public static void handleConnection(BlockingQueue<String> chann) {
 
 		try {
 			var selector = Selector.open();

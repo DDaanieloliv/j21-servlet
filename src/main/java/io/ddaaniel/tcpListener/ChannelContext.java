@@ -16,7 +16,9 @@ public abstract class ChannelContext {
 		return -1;
 	}
 
+	// TODO: avoid the usage of "GodObject" - Context
 	// TODO: discard the finally implementations by using the content-lenght
+	// TODO: getLinesChannel(Context context) -> Class parser | parseRequest(conn)
 	public static void getLinesChannel(Context context) {
 		var buf = context.getBuff(); 
 		var part = context.getPart();
