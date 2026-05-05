@@ -2,7 +2,6 @@ package io.ddaaniel.tcpListener;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -56,7 +55,7 @@ public class ChannelContext {
 			int readed = conn.read(part);
 			if (readed == -1) return;
 			part.flip();
-			int idxN = indexOf(part, 10); 
+			int idxN = indexOf(part, 10);
 
 			debug = new String(part.array(), StandardCharsets.UTF_8).toCharArray();
 
@@ -68,7 +67,7 @@ public class ChannelContext {
 				buf.clear();
 				part.clear();
 
-				if ( ((readed - 1) - idxN) > 0) 
+				if ( ((readed - 1) - idxN) > 0)
 				{
 					part.position(idxN + 1);
 					buf.put(part);
@@ -82,7 +81,7 @@ public class ChannelContext {
 			}
 
 
-		} 
+		}
 		catch (InterruptedException | IOException e) { e.printStackTrace(); }
 
 		return;
@@ -101,7 +100,7 @@ public class ChannelContext {
 				for (;;) {
 					if ((readed = conn.read(part)) == -1) break;
 					part.flip();
-					int idxN = indexOf(part, 10); 
+					int idxN = indexOf(part, 10);
 
 					debug = new String(part.array(), StandardCharsets.UTF_8).toCharArray();
 
@@ -113,7 +112,7 @@ public class ChannelContext {
 						buf.clear();
 						part.clear();
 
-						if ( ((readed - 1) - idxN) > 0) 
+						if ( ((readed - 1) - idxN) > 0)
 						{
 							part.position(idxN + 1);
 							buf.put(part);
@@ -128,11 +127,11 @@ public class ChannelContext {
 				}
 
 
-			} 
+			}
 			catch (InterruptedException | IOException e) { e.printStackTrace(); }
-			finally { 
+			finally {
 				try {
-					if (buf.position() > 0) 
+					if (buf.position() > 0)
 					{
 						buf.flip();
 						channel.put(StandardCharsets.UTF_8.decode(buf).toString());
@@ -165,7 +164,7 @@ public class ChannelContext {
 				int readed;
 				for (;;) {
 					if ((readed = st.read(arrAux)) == -1) break;
-					int idxN = indexOf(arrAux, 10); 
+					int idxN = indexOf(arrAux, 10);
 
 					debug = new String(arrAux, StandardCharsets.UTF_8).toCharArray();
 
@@ -176,7 +175,7 @@ public class ChannelContext {
 						Arrays.fill(arrAux, idxN, idxN + 1, (byte) 0);
 						buf.clear();
 
-						if ( ((readed - 1) - idxN) > 0) 
+						if ( ((readed - 1) - idxN) > 0)
 						{
 							buf.put( arrAux, (idxN + 1), ((readed - 1) - idxN) );
 						}
@@ -184,14 +183,14 @@ public class ChannelContext {
 					} else buf.put(arrAux, 0, readed);
 				}
 
-				if (buf.position() > 0) 
+				if (buf.position() > 0)
 				{
 					buf.flip();
 					channel.put(StandardCharsets.UTF_8.decode(buf).toString());
 					buf.clear();
 				}
 				st.close();
-				
+
 			} catch (Exception e) { e.printStackTrace(); }
 		}).start();
 
