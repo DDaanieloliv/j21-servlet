@@ -1,6 +1,7 @@
 package io.ddaaniel.tcpListener;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -11,6 +12,15 @@ import java.util.concurrent.BlockingQueue;
  * Reader
  */
 public abstract class Reader {
+
+	public static void handleConnection(ReadableByteChannel conn) {
+		try {
+
+
+			conn.close();
+
+		} catch (Exception e) { e.printStackTrace(); }
+	}
 
 	// TODO: avoid the usage of "GodObject" - Context
 	// TODO: function of unique scope, with Acceptor Loop outside of the function
