@@ -1,32 +1,46 @@
 package io.ddaaniel.tcpListener;
 
+
 import java.net.InetSocketAddress;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.BlockingQueue;
+
+import io.ddaaniel.internal.parser.RequestParsing;
+import io.ddaaniel.internal.parser.message.Request;
 
 /**
  * Reader
  */
 public abstract class Reader {
 
-	public static void handleConnection(ReadableByteChannel conn) {
+	public static void handleConnection() {
 		try {
 
+			var server = ServerSocketChannel.open();
+			server.bind(new InetSocketAddress(42069));
+			var request = new Request();
 
-			conn.close();
+			while (true) {
+				var socket = server.accept();
+				request = new RequestParsing().RequestFromReader(socket);
+				break;
+			}
+
+			System.out.println("Request Line:");
+			System.out.println(" - Method: " + request.requestLine.Method); 
+			System.out.println(" - Target: " + request.requestLine.RequestTarget);
+			System.out.println(" - Version: " + request.requestLine.HttpVersion);
 
 		} catch (Exception e) { e.printStackTrace(); }
 	}
 
-	// TODO: avoid the usage of "GodObject" - Context
-	// TODO: function of unique scope, with Acceptor Loop outside of the function
-	// TODO: handleConnection( BlockingQueue<String> ) -> handleConnection(conn)
-	public static void handleConnection(BlockingQueue<String> chann) {
 
+
+
+
+	public static void handleConnection(ReadableByteChannel conn) {
 		try {
 			var selector = Selector.open();
 			var server = ServerSocketChannel.open();
@@ -45,34 +59,22 @@ public abstract class Reader {
 					keySet.remove();
 
 					if (key.isAcceptable()) {
-						var socket = ((ServerSocketChannel) key.channel()).accept();
-						socket.configureBlocking(false);
+						// var socket = ((ServerSocketChannel) key.channel()).accept();
+						// socket.configureBlocking(false);
 
-						var queue = chann;
-						var context = new Context(queue);
+						// var queue = chann;
+						// var context = new Context(queue);
 
-						socket.register(selector, SelectionKey.OP_READ, context);
-
-						// DIRTY STDOUT TO THE LINES IN THE CHANNEL
-						new Thread(() -> {
-							try {
-
-								while (true) {
-									var line = queue.take();
-									System.out.println("read: " + line);
-								}
-								
-							} catch (Exception e) { e.printStackTrace(); }
-						}).start();
+						// socket.register(selector, SelectionKey.OP_READ, context);
 					}
 
 					if (key.isReadable()) {
-						var socketChannel = (SocketChannel) key.channel();
-						var context = (Context) key.attachment();
-						context.attachKeyContext(socketChannel);
+						// var socketChannel = (SocketChannel) key.channel();
+						// var context = (Context) key.attachment();
+						// context.attachKeyContext(socketChannel);
 
-						var writer = context;
-						ChannelContext.getLinesChannel(writer);
+						// var writer = context;
+						// ChannelContext.getLinesChannel(writer);
 					}
 				}
 			}
