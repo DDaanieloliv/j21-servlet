@@ -2,16 +2,12 @@ package io.ddaaniel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Pipe;
-import java.nio.channels.ReadableByteChannel;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.tcpListener.ChannelContext;
-import io.ddaaniel.tcpListener.Context;
+import io.ddaaniel.internal.parser.RequestParsing;
+import io.ddaaniel.mocks.ChunkReader;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class AppTest {
 
-	public final ByteBuffer buffer = ByteBuffer.allocate(1024);
+	private final ByteBuffer buffer = ByteBuffer.allocate(1024);
 
 	/**
 	 * Rigorous Test :-)
@@ -36,46 +32,21 @@ public class AppTest {
 	 * Rigorous Test :-)
 	 */
 	@Test
-	public void shouldReadAPayloadCorrectly() throws IOException {
-		var channel = new LinkedBlockingDeque<String>();
-		var context = new Context(channel);
-		var mockData = ByteBuffer.wrap(
-				("A society grows great when\n" +
-				 "old men plant trees whose shade\n" +
-				 "they know they shall never sit in.\n" +
-				 "END").getBytes()
-				);
+	public void TestRequestLineParse() throws IOException {
+		var reader = new ChunkReader("".getBytes(), 2);
+		var request = new RequestParsing().RequestFromReader(reader);
 
-		var pipe = Pipe.open();
-		pipe.sink().write(mockData);
-		pipe.sink().close();
-		var mockSocket = (ReadableByteChannel) pipe.source();
-		context.attachKeyContext(mockSocket);
 
-		// mockSelector, 20 rounds cuse we read 8bytes at time in getLinesChannel
-		for (int i = 0; i < 20; i++) { ChannelContext.getLinesChannel(context); }
+		assertEquals("GET", request.requestLine.Method);
+		assertEquals("/", request.requestLine.RequestTarget);
+		assertEquals("1.1", request.requestLine.HttpVersion);
 
-		try {
-			assertEquals(
-					"A society grows great when",
-					channel.poll(500, TimeUnit.MILLISECONDS)
-					);
-			assertEquals(
-					"old men plant trees whose shade",
-					channel.poll(500, TimeUnit.MILLISECONDS)
-					);
-			assertEquals(
-					"they know they shall never sit in.",
-					channel.poll(500, TimeUnit.MILLISECONDS)
-					);
+		reader = new ChunkReader("".getBytes(), 2);
+		request = new RequestParsing().RequestFromReader(reader);
 
-			assertTrue(channel.isEmpty());
-			assertEquals(context.getBuff().get(0), (byte) 'E');
-			assertEquals(context.getBuff().get(1), (byte) 'N');
-			assertEquals(context.getBuff().get(2), (byte) 'D');
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		assertEquals("GET", request.requestLine.Method);
+    assertEquals("/coffee", request.requestLine.RequestTarget);
+    assertEquals("1.1", request.requestLine.HttpVersion);
 	}
 
 	@BeforeEach

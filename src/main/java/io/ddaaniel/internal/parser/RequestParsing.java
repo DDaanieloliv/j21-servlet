@@ -71,7 +71,6 @@ public class RequestParsing {
 		}
 
 		var requestLine = new RequestLine(parts[0], parts[1], httpParts[1]);
-
 		return Tuple.of(requestLine, read);
 	}
 
