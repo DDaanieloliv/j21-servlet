@@ -32,16 +32,18 @@ public class AppTest {
 	 * Rigorous Test :-)
 	 */
 	@Test
-	public void TestRequestLineParse() throws IOException {
-		var reader = new ChunkReader("".getBytes(), 2);
+	public void TestRequestLineParse() {
+		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
+		var reader = new ChunkReader(bytes, 2);
 		var request = new RequestParsing().RequestFromReader(reader);
-
 
 		assertEquals("GET", request.requestLine.Method);
 		assertEquals("/", request.requestLine.RequestTarget);
 		assertEquals("1.1", request.requestLine.HttpVersion);
 
-		reader = new ChunkReader("".getBytes(), 2);
+
+		bytes = "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
+		reader = new ChunkReader(bytes, 2);
 		request = new RequestParsing().RequestFromReader(reader);
 
 		assertEquals("GET", request.requestLine.Method);

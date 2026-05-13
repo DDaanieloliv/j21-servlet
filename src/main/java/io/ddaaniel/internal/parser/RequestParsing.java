@@ -21,10 +21,9 @@ public class RequestParsing {
 
 	private final Request request_onboard = new Request();
 
-
-	private int IndexOf(ByteBuffer buff) {
-		for (int i = buff.position(); i < buff.limit() - 1; i++) {
-			if (buff.get(i) == '\r' && buff.get(i + 1) == '\n') {
+	private int IndexOf(ByteBuffer buffer) {
+		for (int i = buffer.position(); i < buffer.limit() - 1; i++) {
+			if (buffer.get(i) == '\r' && buffer.get(i + 1) == '\n') {
 				return i;
 			}
 		}
@@ -42,7 +41,7 @@ public class RequestParsing {
 	}
 
 	private Tuple2<RequestLine, Integer> parseRequestLine(ByteBuffer bytes) {
-		var SEPARATOR = "\r\n".getBytes();
+		var SEPARATOR = "\r\n";
 		var START = bytes.position();
 		var EOL = IndexOf(bytes);
 		if (EOL == -1) {
@@ -54,8 +53,8 @@ public class RequestParsing {
 		bytes.get();
 		bytes.get();
 
-		int read = (EOL + SEPARATOR.length) - START;
-		String startLine = new String(lineBytes, StandardCharsets.UTF_8);
+		var read = (EOL + SEPARATOR.length()) - START;
+		var startLine = new String(lineBytes, StandardCharsets.UTF_8);
 		var parts = startLine.split(" ");
 		if (parts.length != 3) { 
 			throw new MalformedRequestLineException(
@@ -110,14 +109,24 @@ public class RequestParsing {
 
 		while (!done()) {
 			try {
-				reader.read(buf);
+				var read = reader.read(buf);
+				if (read == -1) {
+					if (!done()) request.state = ParseState.STATE_ERROR; 
+					break;
+				}
+
 				buf.flip();
-				var read = parse(buf);
-				if (read == 0 && buf.limit() == buf.limit()) {
+				parse(buf);
+
+				if (buf.remaining() == buf.capacity()) {
+					request.state = ParseState.STATE_ERROR;
 					throw new URITooLongException(" -- uri too long, error 414 -- bytes-read: " + read);
 				}
 				buf.compact();
-			} catch (Exception e) { e.printStackTrace(); }
+			} catch (Exception e) { 
+				e.printStackTrace(); 
+				break;
+			}
 		}
 
 		return request;
