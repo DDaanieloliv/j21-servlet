@@ -1,6 +1,5 @@
 package io.ddaaniel;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.junit.jupiter.api.BeforeEach;
