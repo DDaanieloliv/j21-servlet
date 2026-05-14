@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import io.ddaaniel.internal.parser.header.message.Headers;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+
 /**
  * HeaderParsing
  */
@@ -16,12 +17,35 @@ public class HeaderParsing {
 		return this;
 	}
 	
-	private int IndexOf(ByteBuffer buffer) {
-		for (int i = buffer.position(); i < buffer.limit() - 1; i++) {
-			if (buffer.get(i) == '\r' && buffer.get(i + 1) == '\n') {
+	private int IndexOf(ByteBuffer source) {
+		for (int i = source.position(); i < source.limit() - 1; i++) {
+			if (source.get(i) == '\r' && source.get(i + 1) == '\n') {
 				return i;
 			}
 		}
+		return -1;
+	}
+
+	private int IndexOf(ByteBuffer source, String string) {
+		var i = source.position();
+		var size = source.limit();
+		var toRead = 0;
+		while (i < size) {
+
+			toRead = size - i;
+			if (toRead < size) break;
+			if (source.get(i) == string.charAt(0)) {
+				int j = i;
+				for (char c : string.toCharArray()) {
+					if (c != source.get(j)) break;	
+					j++;
+				}
+				return i;
+			}
+
+			i++;
+		}
+
 		return -1;
 	}
 
