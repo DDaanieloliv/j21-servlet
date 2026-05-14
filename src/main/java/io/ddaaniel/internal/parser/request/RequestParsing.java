@@ -1,5 +1,4 @@
-package io.ddaaniel.internal.parser;
-
+package io.ddaaniel.internal.parser.request;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
@@ -7,10 +6,9 @@ import java.nio.charset.StandardCharsets;
 
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
-import io.ddaaniel.internal.parser.message.Request;
-
-import io.ddaaniel.internal.parser.message.RequestLine;
-import io.ddaaniel.internal.parser.message.state.ParseState;
+import io.ddaaniel.internal.parser.request.message.Request;
+import io.ddaaniel.internal.parser.request.message.RequestLine;
+import io.ddaaniel.internal.parser.request.message.state.ParseState;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 
@@ -41,11 +39,12 @@ public class RequestParsing {
 	}
 
 	private Tuple2<RequestLine, Integer> parseRequestLine(ByteBuffer bytes) {
+		var read = 0;
 		var SEPARATOR = "\r\n";
 		var START = bytes.position();
 		var EOL = IndexOf(bytes);
 		if (EOL == -1) {
-			return Tuple.of(null, 0);
+			return Tuple.of(null, read);
 		}
 
 		var lineBytes = new byte[EOL - START];
@@ -53,7 +52,7 @@ public class RequestParsing {
 		bytes.get();
 		bytes.get();
 
-		var read = (EOL + SEPARATOR.length()) - START;
+		read += (bytes.position() - START); // (EOL + SEPARATOR.length()) - START;
 		var startLine = new String(lineBytes, StandardCharsets.UTF_8);
 		var parts = startLine.split(" ");
 		if (parts.length != 3) { 

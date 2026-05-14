@@ -7,8 +7,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 
-import io.ddaaniel.internal.parser.RequestParsing;
-import io.ddaaniel.internal.parser.message.Request;
+import io.ddaaniel.internal.parser.request.RequestParsing;
+import io.ddaaniel.internal.parser.request.message.Request;
 
 /**
  * Reader

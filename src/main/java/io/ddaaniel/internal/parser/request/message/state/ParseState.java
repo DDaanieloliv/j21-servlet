@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.message.state;
+package io.ddaaniel.internal.parser.request.message.state;
 
 /**
  * ParseState
