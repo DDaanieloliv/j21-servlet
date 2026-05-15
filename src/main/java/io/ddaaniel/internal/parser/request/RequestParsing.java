@@ -19,11 +19,31 @@ public class RequestParsing {
 
 	private final Request request_onboard = new Request();
 
-	private int IndexOf(ByteBuffer buffer) {
-		for (int i = buffer.position(); i < buffer.limit() - 1; i++) {
-			if (buffer.get(i) == '\r' && buffer.get(i + 1) == '\n') {
-				return i;
+	private int IndexOf(ByteBuffer source, String string) {
+		var i = source.position();
+		var size = source.limit();
+		var bytes = string.getBytes();
+		var toRead = 0;
+		while (i < size) {
+
+			toRead = size - i;
+			if (toRead < string.length()) break;
+			if (source.get(i) == bytes[0]) {
+				var match = true;
+				int j = i;
+				for (byte c : bytes) {
+					if (c != source.get(j)) {
+						match = false;
+						break;
+					}	
+					j++;
+				}
+				if (match) {
+					return i;
+				}
 			}
+
+			i++;
 		}
 		return -1;
 	}
@@ -42,7 +62,7 @@ public class RequestParsing {
 		var read = 0;
 		var SEPARATOR = "\r\n";
 		var START = bytes.position();
-		var EOL = IndexOf(bytes);
+		var EOL = IndexOf(bytes, SEPARATOR);
 		if (EOL == -1) {
 			return Tuple.of(null, read);
 		}

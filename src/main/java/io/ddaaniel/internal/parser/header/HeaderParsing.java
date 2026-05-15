@@ -17,35 +17,32 @@ public class HeaderParsing {
 		return this;
 	}
 	
-	private int IndexOf(ByteBuffer source) {
-		for (int i = source.position(); i < source.limit() - 1; i++) {
-			if (source.get(i) == '\r' && source.get(i + 1) == '\n') {
-				return i;
-			}
-		}
-		return -1;
-	}
-
 	private int IndexOf(ByteBuffer source, String string) {
 		var i = source.position();
 		var size = source.limit();
+		var bytes = string.getBytes();
 		var toRead = 0;
 		while (i < size) {
 
 			toRead = size - i;
-			if (toRead < size) break;
-			if (source.get(i) == string.charAt(0)) {
+			if (toRead < string.length()) break;
+			if (source.get(i) == bytes[0]) {
+				var match = true;
 				int j = i;
-				for (char c : string.toCharArray()) {
-					if (c != source.get(j)) break;	
+				for (byte c : bytes) {
+					if (c != source.get(j)) {
+						match = false;
+						break;
+					}	
 					j++;
 				}
-				return i;
+				if (match) {
+					return i;
+				}
 			}
 
 			i++;
 		}
-
 		return -1;
 	}
 
@@ -54,7 +51,7 @@ public class HeaderParsing {
 		var done = false;
 		var SEPARATOR = "\r\n";
 		var START = data.position();
-		var EOL = IndexOf(data);
+		var EOL = IndexOf(data, SEPARATOR);
 		if (EOL == -1) {
 			return Tuple.of(read, done);
 		}
