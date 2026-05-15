@@ -38,9 +38,7 @@ public class RequestParsing {
 					}	
 					j++;
 				}
-				if (match) {
-					return i;
-				}
+				if (match) return i;
 			}
 
 			i++;

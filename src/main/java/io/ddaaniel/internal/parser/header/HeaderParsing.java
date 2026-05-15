@@ -36,9 +36,7 @@ public class HeaderParsing {
 					}	
 					j++;
 				}
-				if (match) {
-					return i;
-				}
+				if (match) return i;
 			}
 
 			i++;
@@ -46,27 +44,48 @@ public class HeaderParsing {
 		return -1;
 	}
 
+	private byte[][] Split(ByteBuffer source, String string, Integer limiter) {
+
+		return new byte[0][0];
+	}
+
+	private Tuple2<String, String> parseHeader(ByteBuffer fieldline) {
+
+		return Tuple.of("", "");
+	}
+
+
 	public Tuple2<Integer, Boolean> Parse(ByteBuffer data) {
 		var read = 0;
 		var done = false;
 		var SEPARATOR = "\r\n";
 		var START = data.position();
-		var EOL = IndexOf(data, SEPARATOR);
-		if (EOL == -1) {
-			return Tuple.of(read, done);
+
+		for (;;) {
+			var EOL = IndexOf(data, SEPARATOR);
+			if (EOL == -1) {
+				break;
+			}
+
+			var headerline = new byte[EOL - START];
+			data.get(headerline);
+			data.get();
+			data.get();
+			read += data.position() - START;
+			done = true;
+
+			if (EOL == 0) {
+				done = true;
+				break;
+			}
+
+			if (read == SEPARATOR.length()) {
+				return Tuple.of(read, done);
+			}
 		}
 
-		var headerline = new byte[EOL - START];
-		data.get(headerline);
-		data.get();
-		data.get();
-		read += data.position() - START;
-		done = true;
-		
-		if (read == SEPARATOR.length()) {
-			return Tuple.of(read, done);
-		}
 
-		return null;
+		var n = 0;
+		return Tuple.of(n, done);
 	}
 }
