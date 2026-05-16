@@ -17,7 +17,7 @@ public class HeaderParsing {
 		return this;
 	}
 	
-	private int IndexOf(ByteBuffer source, String string) {
+	private static int IndexOf(ByteBuffer source, String string) {
 		var i = source.position();
 		var size = source.limit();
 		var bytes = string.getBytes();
@@ -44,9 +44,36 @@ public class HeaderParsing {
 		return -1;
 	}
 
-	private byte[][] Split(ByteBuffer source, String string, Integer limiter) {
+	public static byte[][] Split(ByteBuffer source, String string, Integer times) {
+		source.mark();
+		var start = source.position();
+		var size = source.limit();
+		var range = times - 1;
+		var splites = new byte[times][];
+		var splitsCount = 0;
 
-		return new byte[0][0];
+		while (splitsCount < times) {
+			var bytes = new byte[size - start];
+			var idx = IndexOf(source, string);
+			if (idx != -1) {
+				bytes = new byte[idx - start];
+			}
+			if (splitsCount == range) { 
+				bytes = new byte[size - start];
+			}
+
+			source.get(bytes);
+
+			splites[splitsCount] = bytes;
+			if (!(splitsCount == range)) {
+				for (int i = 0; i < string.length(); i++) { source.get(); }
+			}
+			start = source.position();
+			splitsCount++;
+		}
+
+		source.reset();
+		return splites;
 	}
 
 	private Tuple2<String, String> parseHeader(ByteBuffer fieldline) {

@@ -19,7 +19,7 @@ public class RequestParsing {
 
 	private final Request request_onboard = new Request();
 
-	private int IndexOf(ByteBuffer source, String string) {
+	private static int IndexOf(ByteBuffer source, String string) {
 		var i = source.position();
 		var size = source.limit();
 		var bytes = string.getBytes();

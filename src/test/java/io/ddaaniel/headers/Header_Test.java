@@ -21,6 +21,29 @@ public class Header_Test {
 	public void asserting() {
 		assertTrue(true);
 	}
+
+	@Test
+	public void assertingNsplites() {
+		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
+		var string = "hhh";
+		var times = 2;
+
+		var returns = HeaderParsing.Split(source, string, times);
+
+		assertEquals(returns.length, times);
+		assertEquals(new String(returns[0]), "AbCdEfG");
+		assertEquals(new String(returns[1]), "hIjKlMnOpQrStUvWxYz");
+
+		source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes());
+		string = "hhh";
+		times = 2;
+
+		returns = HeaderParsing.Split(source, string, times);
+
+		assertEquals(returns.length, times);
+		assertEquals(new String(returns[0]), "AbCdEfG");
+		assertEquals(new String(returns[1]), "hIjKlMnOpQhhhhrStUvWxYz");
+	}
 	
 	@Test
 	public void TestHeaderParse() {
