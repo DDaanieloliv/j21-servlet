@@ -18,6 +18,24 @@ public class Request_Test {
 
 	private final ByteBuffer buffer = ByteBuffer.allocate(1024);
 
+	@Test
+	public void assertingIsIndexOf() {
+		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
+		var string = "hhh";
+		var result = RequestParsing.IndexOf(source, string);
+		assertEquals(7, result);
+
+		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
+		string = "hhh";
+		result = RequestParsing.IndexOf(source, string);
+		assertEquals(20, result);
+
+		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
+		string = "hhh";
+		result = RequestParsing.IndexOf(source, string);
+		assertEquals(-1, result);
+	}
+
 	/**
 	 * Rigorous Test :-)
 	 */

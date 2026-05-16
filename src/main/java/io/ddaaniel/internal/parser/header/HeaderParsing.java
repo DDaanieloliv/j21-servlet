@@ -2,6 +2,7 @@ package io.ddaaniel.internal.parser.header;
 
 import java.nio.ByteBuffer;
 
+import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.parser.header.message.Headers;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -45,39 +46,52 @@ public class HeaderParsing {
 	}
 
 	public static byte[][] Split(ByteBuffer source, String string, Integer times) {
+		if (times == 0) return null;
 		source.mark();
 		var start = source.position();
 		var size = source.limit();
 		var range = times - 1;
-		var splites = new byte[times][];
+		var toRead = size - start;
+		var splits = new byte[times][];
 		var splitsCount = 0;
+		var condition = splitsCount < times;
 
-		while (splitsCount < times) {
+		if (times < 0) condition =  true;
+		while (condition) {
 			var bytes = new byte[size - start];
 			var idx = IndexOf(source, string);
 			if (idx != -1) {
 				bytes = new byte[idx - start];
 			}
+			if (idx == -1 && toRead < string.length()) break;
 			if (splitsCount == range) { 
 				bytes = new byte[size - start];
 			}
 
-			source.get(bytes);
-
-			splites[splitsCount] = bytes;
-			if (!(splitsCount == range)) {
-				for (int i = 0; i < string.length(); i++) { source.get(); }
+			for (int i = 0; i < bytes.length; i++) {
+				bytes[i] = source.get(start++);
 			}
-			start = source.position();
+
+			splits[splitsCount] = bytes;
+			if (!(splitsCount == range)) {
+				for (int i = 0; i < string.length(); i++) { start++; }
+			}
+			source.position(start);
 			splitsCount++;
 		}
 
 		source.reset();
-		return splites;
+		return splits;
 	}
 
 	private Tuple2<String, String> parseHeader(ByteBuffer fieldline) {
+		var parts = Split(fieldline, ":", 2);
+		if (parts.length != 2) {
+			throw new MalformedHeaderException(" -> malformed header -- ");
+		}
 
+		var name = parts[0];
+		var value = parts[1];
 		return Tuple.of("", "");
 	}
 

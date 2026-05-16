@@ -43,6 +43,17 @@ public class Header_Test {
 		assertEquals(returns.length, times);
 		assertEquals(new String(returns[0]), "AbCdEfG");
 		assertEquals(new String(returns[1]), "hIjKlMnOpQhhhhrStUvWxYz");
+
+		source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes());
+		string = "hhh";
+		times = 3;
+
+		returns = HeaderParsing.Split(source, string, times);
+
+		assertEquals(returns.length, times);
+		assertEquals(new String(returns[0]), "AbCdEfG");
+		assertEquals(new String(returns[1]), "hIjKlMnOpQ");
+		assertEquals(new String(returns[2]), "hrStUvWxYz");
 	}
 	
 	@Test
