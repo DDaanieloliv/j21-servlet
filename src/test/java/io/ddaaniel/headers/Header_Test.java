@@ -3,7 +3,6 @@ package io.ddaaniel.headers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
 
@@ -18,17 +17,46 @@ import io.ddaaniel.internal.parser.header.HeaderParsing;
 public class Header_Test {
 
 	@Test
-	public void asserting() {
-		assertTrue(true);
+	public void assertingIsIndexOf() throws Exception {
+		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
+		var string = "hhh";
+		var obj = new HeaderParsing();
+		var method = HeaderParsing.class.getDeclaredMethod(
+				"IndexOf", 
+				ByteBuffer.class, 
+				String.class);
+		method.setAccessible(true);
+
+		var result = method.invoke(obj, source, string);
+		assertEquals(7, result);
+
+		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
+		string = "hhh";
+		result = method.invoke(obj, source, string);
+		assertEquals(20, result);
+
+		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
+		string = "hhh";
+		result = method.invoke(obj, source, string);
+		assertEquals(-1, result);
 	}
 
+
 	@Test
-	public void assertingNsplites() {
+	public void assertingNsplites() throws Exception {
 		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
 		var string = "hhh";
 		var times = 2;
 
-		var returns = HeaderParsing.Split(source, string, times);
+		var obj = new HeaderParsing();
+		var method = HeaderParsing.class.getDeclaredMethod(
+				"Split", 
+				ByteBuffer.class, 
+				String.class, 
+				Integer.class);
+		method.setAccessible(true);
+		var returns = (byte[][]) method.invoke(obj, source, string, times);
+		// var returns = HeaderParsing.Split(source, string, times);
 
 		assertEquals(returns.length, times);
 		assertEquals(new String(returns[0]), "AbCdEfG");
@@ -38,7 +66,8 @@ public class Header_Test {
 		string = "hhh";
 		times = 2;
 
-		returns = HeaderParsing.Split(source, string, times);
+		returns = (byte[][]) method.invoke(obj, source, string, times);
+		// returns = HeaderParsing.Split(source, string, times);
 
 		assertEquals(returns.length, times);
 		assertEquals(new String(returns[0]), "AbCdEfG");
@@ -48,13 +77,15 @@ public class Header_Test {
 		string = "hhh";
 		times = 3;
 
-		returns = HeaderParsing.Split(source, string, times);
+		returns = (byte[][]) method.invoke(obj, source, string, times);
+		// returns = HeaderParsing.Split(source, string, times);
 
 		assertEquals(returns.length, times);
 		assertEquals(new String(returns[0]), "AbCdEfG");
 		assertEquals(new String(returns[1]), "hIjKlMnOpQ");
 		assertEquals(new String(returns[2]), "hrStUvWxYz");
 	}
+
 	
 	@Test
 	public void TestHeaderParse() {

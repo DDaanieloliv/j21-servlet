@@ -45,7 +45,9 @@ public class HeaderParsing {
 		return -1;
 	}
 
-	public static byte[][] Split(ByteBuffer source, String string, Integer times) {
+	
+
+	private static byte[][] Split(ByteBuffer source, String string, Integer times) {
 		if (times == 0) return null;
 		source.mark();
 		var start = source.position();
@@ -54,10 +56,8 @@ public class HeaderParsing {
 		var toRead = size - start;
 		var splits = new byte[times][];
 		var splitsCount = 0;
-		var condition = splitsCount < times;
 
-		if (times < 0) condition =  true;
-		while (condition) {
+		while (times < 0 || splitsCount < times) {
 			var bytes = new byte[size - start];
 			var idx = IndexOf(source, string);
 			if (idx != -1) {
