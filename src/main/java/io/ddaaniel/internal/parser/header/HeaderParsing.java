@@ -45,26 +45,51 @@ public class HeaderParsing {
 		return -1;
 	}
 
+
+	private static int count(ByteBuffer source, String string) {
+		var i = 0;
+		var size = source.limit();
+		var start = source.position();
+		var counts = 0;
+		var pos = start;
+		while (i < size) {
+			var idx = IndexOf(source, string);
+			if (idx == -1) {
+				break;
+			}
+
+			start = idx + string.length();
+			source.position(start);
+			counts++;
+			i++;
+		}
+
+		source.position(pos);
+		return counts;
+	}
 	
 
 	private static byte[][] Split(ByteBuffer source, String string, Integer times) {
 		if (times == 0) return null;
 		source.mark();
+
 		var start = source.position();
 		var size = source.limit();
 		var range = times - 1;
-		var toRead = size - start;
-		var splits = new byte[times][];
+		
+		var splits = new byte[count(source, string)][];
+		if (times > 0) splits = new byte[times][];
 		var splitsCount = 0;
 
 		while (times < 0 || splitsCount < times) {
+			var toRead = size - start;
 			var bytes = new byte[size - start];
 			var idx = IndexOf(source, string);
 			if (idx != -1) {
 				bytes = new byte[idx - start];
 			}
 			if (idx == -1 && toRead < string.length()) break;
-			if (splitsCount == range) { 
+			if (splitsCount == range && times > 0) { 
 				bytes = new byte[size - start];
 			}
 
@@ -73,7 +98,7 @@ public class HeaderParsing {
 			}
 
 			splits[splitsCount] = bytes;
-			if (!(splitsCount == range)) {
+			if (!(splitsCount == range && times > 0)) {
 				for (int i = 0; i < string.length(); i++) { start++; }
 			}
 			source.position(start);

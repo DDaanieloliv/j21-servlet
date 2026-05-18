@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.nio.ByteBuffer;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.ddaaniel.internal.parser.header.HeaderParsing;
@@ -43,47 +44,67 @@ public class Header_Test {
 
 
 	@Test
-	public void assertingNsplites() throws Exception {
-		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
-		var string = "hhh";
-		var times = 2;
-
+	public void assertingCountPatternsCorrectly() throws Exception {
+		var source = ByteBuffer.wrap("AbChhdEfGhhhhIjKlMnOphhQrStUvWxYz".getBytes());
+		var string = "hh";
 		var obj = new HeaderParsing();
 		var method = HeaderParsing.class.getDeclaredMethod(
-				"Split", 
+				"count", 
 				ByteBuffer.class, 
-				String.class, 
-				Integer.class);
+				String.class);
 		method.setAccessible(true);
-		var returns = (byte[][]) method.invoke(obj, source, string, times);
-		// var returns = HeaderParsing.Split(source, string, times);
+		
+		var result = method.invoke(obj, source, string);
+		assertEquals(4, result);
+	}
 
-		assertEquals(returns.length, times);
-		assertEquals(new String(returns[0]), "AbCdEfG");
-		assertEquals(new String(returns[1]), "hIjKlMnOpQrStUvWxYz");
+	@Nested
+	class assertingSplits {
+		@Test
+		public void assertingSplitsLimited() throws Exception {
+			var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes());
+			var string = "hhh";
+			var times = 3;
+			var obj = new HeaderParsing();
+			var method = HeaderParsing.class.getDeclaredMethod(
+					"Split", 
+					ByteBuffer.class, 
+					String.class, 
+					Integer.class);
+			method.setAccessible(true);
 
-		source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes());
-		string = "hhh";
-		times = 2;
+			var returns = (byte[][]) method.invoke(obj, source, string, times);
+			// returns = HeaderParsing.Split(source, string, times);
 
-		returns = (byte[][]) method.invoke(obj, source, string, times);
-		// returns = HeaderParsing.Split(source, string, times);
+			assertEquals(returns.length, times);
+			assertEquals(new String(returns[0]), "AbCdEfG");
+			assertEquals(new String(returns[1]), "hIjKlMnOpQ");
+			assertEquals(new String(returns[2]), "hrStUvWxYz");
+		}
 
-		assertEquals(returns.length, times);
-		assertEquals(new String(returns[0]), "AbCdEfG");
-		assertEquals(new String(returns[1]), "hIjKlMnOpQhhhhrStUvWxYz");
 
-		source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes());
-		string = "hhh";
-		times = 3;
+		@Test
+		public void assertingSplitsUnlimited() throws Exception {
+			var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYhhhzhhh".getBytes());
+			var string = "hhh";
+			var times = -1;
+			var obj = new HeaderParsing();
+			var method = HeaderParsing.class.getDeclaredMethod(
+					"Split", 
+					ByteBuffer.class, 
+					String.class, 
+					Integer.class);
+			method.setAccessible(true);
 
-		returns = (byte[][]) method.invoke(obj, source, string, times);
-		// returns = HeaderParsing.Split(source, string, times);
+			var returns = (byte[][]) method.invoke(obj, source, string, times);
 
-		assertEquals(returns.length, times);
-		assertEquals(new String(returns[0]), "AbCdEfG");
-		assertEquals(new String(returns[1]), "hIjKlMnOpQ");
-		assertEquals(new String(returns[2]), "hrStUvWxYz");
+			assertEquals(returns.length, 5);
+			assertEquals(new String(returns[0]), "AbCdEfG");
+			assertEquals(new String(returns[1]), "hIjKlMnOpQ");
+			assertEquals(new String(returns[2]), "hrStUvWxY");
+			assertEquals(new String(returns[3]), "z");
+			// assertEquals(new String(returns[4]), "");
+		}
 	}
 
 	
