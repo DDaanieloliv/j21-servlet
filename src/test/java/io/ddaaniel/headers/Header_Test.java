@@ -25,20 +25,21 @@ public class Header_Test {
 		var method = HeaderParsing.class.getDeclaredMethod(
 				"IndexOf", 
 				ByteBuffer.class, 
-				String.class);
+				String.class,
+				int.class);
 		method.setAccessible(true);
 
-		var result = method.invoke(obj, source, string);
+		var result = method.invoke(obj, source, string, 0);
 		assertEquals(7, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
 		string = "hhh";
-		result = method.invoke(obj, source, string);
+		result = method.invoke(obj, source, string, 0);
 		assertEquals(20, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
 		string = "hhh";
-		result = method.invoke(obj, source, string);
+		result = method.invoke(obj, source, string, 0);
 		assertEquals(-1, result);
 	}
 
@@ -55,6 +56,12 @@ public class Header_Test {
 		method.setAccessible(true);
 		
 		var result = method.invoke(obj, source, string);
+		assertEquals(4, result);
+
+		source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYhhhzhhh".getBytes());
+		string = "hhh";
+		result = method.invoke(obj, source, string);
+
 		assertEquals(4, result);
 	}
 
@@ -103,7 +110,7 @@ public class Header_Test {
 			assertEquals(new String(returns[1]), "hIjKlMnOpQ");
 			assertEquals(new String(returns[2]), "hrStUvWxY");
 			assertEquals(new String(returns[3]), "z");
-			// assertEquals(new String(returns[4]), "");
+			assertEquals(new String(returns[4]), "");
 		}
 	}
 

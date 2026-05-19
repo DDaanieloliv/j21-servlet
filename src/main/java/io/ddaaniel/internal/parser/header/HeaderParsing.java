@@ -18,8 +18,8 @@ public class HeaderParsing {
 		return this;
 	}
 	
-	private static int IndexOf(ByteBuffer source, String string) {
-		var i = source.position();
+	private static int IndexOf(ByteBuffer source, String string, int start) {
+		var i = start;
 		var size = source.limit();
 		var bytes = string.getBytes();
 		var toRead = 0;
@@ -49,22 +49,19 @@ public class HeaderParsing {
 	private static int count(ByteBuffer source, String string) {
 		var i = 0;
 		var size = source.limit();
-		var start = source.position();
+		var start = 0;
 		var counts = 0;
-		var pos = start;
 		while (i < size) {
-			var idx = IndexOf(source, string);
+			var idx = IndexOf(source, string, start);
 			if (idx == -1) {
 				break;
 			}
 
 			start = idx + string.length();
-			source.position(start);
 			counts++;
 			i++;
 		}
 
-		source.position(pos);
 		return counts;
 	}
 	
@@ -73,22 +70,29 @@ public class HeaderParsing {
 		if (times == 0) return null;
 		source.mark();
 
-		var start = source.position();
+		var start = 0;
 		var size = source.limit();
 		var range = times - 1;
 		
-		var splits = new byte[count(source, string)][];
+		var splits = new byte[count(source, string) + 1][];
 		if (times > 0) splits = new byte[times][];
 		var splitsCount = 0;
 
 		while (times < 0 || splitsCount < times) {
 			var toRead = size - start;
 			var bytes = new byte[size - start];
-			var idx = IndexOf(source, string);
+			var idx = IndexOf(source, string, start);
 			if (idx != -1) {
 				bytes = new byte[idx - start];
 			}
-			if (idx == -1 && toRead < string.length()) break;
+			if (idx == -1) {
+				bytes = new byte[toRead];
+				for (int i = 0; i < bytes.length; i++) {
+					bytes[i] = source.get(start++);
+				}
+				splits[splitsCount++] = bytes;
+				break;
+			}
 			if (splitsCount == range && times > 0) { 
 				bytes = new byte[size - start];
 			}
@@ -96,13 +100,9 @@ public class HeaderParsing {
 			for (int i = 0; i < bytes.length; i++) {
 				bytes[i] = source.get(start++);
 			}
+			start += string.length();
 
-			splits[splitsCount] = bytes;
-			if (!(splitsCount == range && times > 0)) {
-				for (int i = 0; i < string.length(); i++) { start++; }
-			}
-			source.position(start);
-			splitsCount++;
+			splits[splitsCount++] = bytes;
 		}
 
 		source.reset();

@@ -19,8 +19,8 @@ public class RequestParsing {
 
 	private final Request request_onboard = new Request();
 
-	private static int IndexOf(ByteBuffer source, String string) {
-		var i = source.position();
+	private static int IndexOf(ByteBuffer source, String string, int start) {
+		var i = start;
 		var size = source.limit();
 		var bytes = string.getBytes();
 		var toRead = 0;
@@ -60,7 +60,7 @@ public class RequestParsing {
 		var read = 0;
 		var SEPARATOR = "\r\n";
 		var START = bytes.position();
-		var EOL = IndexOf(bytes, SEPARATOR);
+		var EOL = IndexOf(bytes, SEPARATOR, START);
 		if (EOL == -1) {
 			return Tuple.of(null, read);
 		}

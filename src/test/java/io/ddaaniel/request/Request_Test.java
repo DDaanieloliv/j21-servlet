@@ -26,20 +26,21 @@ public class Request_Test {
 		var method = RequestParsing.class.getDeclaredMethod(
 				"IndexOf", 
 				ByteBuffer.class, 
-				String.class);
+				String.class,
+				int.class);
 		method.setAccessible(true);
 
-		var result = method.invoke(obj, source, string);
+		var result = method.invoke(obj, source, string, 0);
 		assertEquals(7, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
 		string = "hhh";
-		result = method.invoke(obj, source, string);
+		result = method.invoke(obj, source, string, 0);
 		assertEquals(20, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
 		string = "hhh";
-		result = method.invoke(obj, source, string);
+		result = method.invoke(obj, source, string, 0);
 		assertEquals(-1, result);
 	}
 
