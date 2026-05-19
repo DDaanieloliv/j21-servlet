@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.ddaaniel.internal.parser.header.HeaderParsing;
+import jdk.internal.util.Exceptions;
 
 
 /**
@@ -112,6 +113,18 @@ public class Header_Test {
 			assertEquals(new String(returns[3]), "z");
 			assertEquals(new String(returns[4]), "");
 		}
+	}
+
+
+	@Test
+	public void assertingTrimSpaces() throws Exception {
+		var arr = "   AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz   ".getBytes();
+		var obj = new HeaderParsing();
+		var method = HeaderParsing.class.getDeclaredMethod("TrimSpace", byte[].class);
+		method.setAccessible(true);
+
+		var result = (byte[]) method.invoke(obj, arr);
+		assertEquals("AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz", new String(result));
 	}
 
 	

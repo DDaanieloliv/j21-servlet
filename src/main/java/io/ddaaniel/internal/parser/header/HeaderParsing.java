@@ -1,6 +1,7 @@
 package io.ddaaniel.internal.parser.header;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.parser.header.message.Headers;
@@ -14,10 +15,6 @@ public class HeaderParsing {
 
 	public final Headers fieldline = new Headers();
 
-	public HeaderParsing NewHeaders(){
-		return this;
-	}
-	
 	private static int IndexOf(ByteBuffer source, String string, int start) {
 		var i = start;
 		var size = source.limit();
@@ -68,7 +65,6 @@ public class HeaderParsing {
 
 	private static byte[][] Split(ByteBuffer source, String string, Integer times) {
 		if (times == 0) return null;
-		source.mark();
 
 		var start = 0;
 		var size = source.limit();
@@ -105,8 +101,26 @@ public class HeaderParsing {
 			splits[splitsCount++] = bytes;
 		}
 
-		source.reset();
 		return splits;
+	}
+
+	private static byte[] TrimSpace(byte[] array) {
+		var offsetLeft = 0;
+		var offsetRight = array.length - 1;
+		for (int i = 0; i < array.length; i++) {
+			if (Character.isWhitespace(array[i])) offsetLeft++;
+			else break;
+		}
+		for (int i = array.length - 1; i >= 0; i--) {
+			if (Character.isWhitespace(array[i])) offsetRight--;
+			else break;
+		}
+		return Arrays.copyOfRange(array, offsetLeft, offsetRight + 1);
+	}
+
+
+	public HeaderParsing NewHeaders(){
+		return this;
 	}
 
 	private Tuple2<String, String> parseHeader(ByteBuffer fieldline) {
@@ -116,7 +130,7 @@ public class HeaderParsing {
 		}
 
 		var name = parts[0];
-		var value = parts[1];
+		var value = TrimSpace(parts[1]);
 		return Tuple.of("", "");
 	}
 
@@ -128,7 +142,7 @@ public class HeaderParsing {
 		var START = data.position();
 
 		for (;;) {
-			var EOL = IndexOf(data, SEPARATOR);
+			var EOL = IndexOf(data, SEPARATOR, START);
 			if (EOL == -1) {
 				break;
 			}
