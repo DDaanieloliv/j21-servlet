@@ -119,19 +119,40 @@ public class HeaderParsing {
 	}
 
 
+	private boolean HasSuffix(byte[] arr, byte[] slice) {
+		var match = false;
+		int j = slice.length - 1;
+		int i = arr.length - 1;
+		for (int count = 0; count < slice.length; count++) {
+			if (arr[i--] == slice[j--]) {
+				match = true;
+			} else {
+				match = false;
+				break;
+			} 
+		}
+
+		return match;
+	}
+
 	public HeaderParsing NewHeaders(){
 		return this;
 	}
 
+
 	private Tuple2<String, String> parseHeader(ByteBuffer fieldline) {
 		var parts = Split(fieldline, ":", 2);
 		if (parts.length != 2) {
-			throw new MalformedHeaderException(" -> malformed header -- ");
+			throw new MalformedHeaderException(" -> malformed field-line -- ");
 		}
 
 		var name = parts[0];
 		var value = TrimSpace(parts[1]);
-		return Tuple.of("", "");
+
+		if (HasSuffix(name, " ".getBytes())) {
+			throw new MalformedHeaderException(" -> malformed field-name -- ");
+		}
+		return Tuple.of(String.valueOf(name), String.valueOf(value));
 	}
 
 
@@ -158,14 +179,18 @@ public class HeaderParsing {
 				done = true;
 				break;
 			}
-
 			if (read == SEPARATOR.length()) {
 				return Tuple.of(read, done);
 			}
+
+			var option = parseHeader(ByteBuffer.wrap(headerline));
+			var name = option._1;
+			var value = option._2;
+			read += EOL + SEPARATOR.length();
+			fieldline.map.put(name, value);
 		}
 
 
-		var n = 0;
-		return Tuple.of(n, done);
+		return Tuple.of(read, done);
 	}
 }

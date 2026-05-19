@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.ddaaniel.internal.parser.header.HeaderParsing;
-import jdk.internal.util.Exceptions;
 
 
 /**
@@ -125,6 +124,26 @@ public class Header_Test {
 
 		var result = (byte[]) method.invoke(obj, arr);
 		assertEquals("AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz", new String(result));
+	}
+
+	@Test
+	public void assertingHasSuffix() throws Exception {
+		var arr = "   AbCdEfGhIjK  lMnOpQhrStUvWxYz   ".getBytes();
+		var slice = "  ".getBytes();
+		var obj = new HeaderParsing();
+		var method = HeaderParsing.class.getDeclaredMethod(
+				"HasSuffix", 
+				byte[].class,
+				byte[].class);
+		method.setAccessible(true);
+
+		var result = (boolean) method.invoke(obj, arr, slice);
+		assertEquals(true, result);
+
+		arr = "   AbCdEfGhIjK  lMnOpQhrStUvWxYz ".getBytes();
+		slice = "  ".getBytes();
+		result = (boolean) method.invoke(obj, arr, slice);
+		assertEquals(false, result);
 	}
 
 	
