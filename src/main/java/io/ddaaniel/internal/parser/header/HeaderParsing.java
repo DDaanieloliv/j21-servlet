@@ -16,6 +16,33 @@ public class HeaderParsing {
 
 	public final Headers fieldline = new Headers(new HashMap<>());
 
+	private static int IndexOf(ByteBuffer source, String string, int start) {
+		var i = start;
+		var size = source.limit();
+		var bytes = string.getBytes();
+		var toRead = 0;
+		while (i < size) {
+
+			toRead = size - i;
+			if (toRead < string.length()) break;
+			if (source.get(i) == bytes[0]) {
+				var match = true;
+				int j = i;
+				for (byte c : bytes) {
+					if (c != source.get(j)) {
+						match = false;
+						break;
+					}	
+					j++;
+				}
+				if (match) return i;
+			}
+
+			i++;
+		}
+		return -1;
+	}
+
 	private static int IndexOf(byte[] source, String string, int start) {
 		var i = start;
 		var size = source.length;
@@ -42,7 +69,6 @@ public class HeaderParsing {
 		}
 		return -1;
 	}
-
 
 	private static int count(byte[] source, String string) {
 		var i = 0;
@@ -149,39 +175,40 @@ public class HeaderParsing {
 
 		var name = parts[0];
 		var value = TrimSpace(parts[1]);
-
 		if (HasSuffix(name, " ".getBytes())) {
 			throw new MalformedHeaderException(" -> malformed field-name ");
 		}
 		return Tuple.of(new String(name), new String(value));
-	}
+	} 
 
 
-	public Tuple2<Integer, Boolean> Parse(ByteBuffer data) {
-		var read = 0;
+	public Tuple2<Integer, Boolean> Parse(ByteBuffer data) { 
+		var read = 0; 
 		var done = false;
+		var START = data.position();
 		var SEPARATOR = "\r\n";
-		var bytes = new byte[data.limit() - data.position()];
-		data.get(bytes);
 
 		for (;;) {
-			var EOL = IndexOf(bytes, SEPARATOR, 0);
+			var EOL = IndexOf(data, SEPARATOR, START);
 			if (EOL == -1) {
 				break;
 			}
-			if (EOL == 0) {
+			if (EOL - START == 0) {
 				done = true;
 				read += SEPARATOR.length();
 				break;
 			}
 
-			var headerline = Arrays.copyOfRange(bytes, 0, EOL);
+			var headerline = new byte[EOL - START];
+			data.get(headerline);
+			data.get();
+			data.get();
 			var option = parseHeader(headerline);
 			var name = option._1;
 			var value = option._2;
-			read += EOL + SEPARATOR.length();
 			fieldline.map().put(name, value);
-			bytes = Arrays.copyOfRange(bytes, EOL + SEPARATOR.length(), bytes.length);
+			read += (EOL - START) + SEPARATOR.length();
+			START = data.position();
 		}
 
 

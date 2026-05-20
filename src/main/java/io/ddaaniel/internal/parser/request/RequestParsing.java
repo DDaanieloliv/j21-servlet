@@ -75,14 +75,14 @@ public class RequestParsing {
 		var parts = startLine.split(" ");
 		if (parts.length != 3) { 
 			throw new MalformedRequestLineException(
-					" -- malformed start-line -- bytes-read: " + read
+					" -> malformed start-line -- bytes-read: " + read
 					);
 		}
 
 		var httpParts = parts[2].split("/");
 		if (httpParts.length != 2 || !httpParts[0].equals("HTTP") || !httpParts[1].equals("1.1")) { 
 			throw new MalformedRequestLineException(
-					" -- malformed request-line -- bytes-read: " + read
+					" -> malformed request-line -- bytes-read: " + read
 					);
 		}
 
@@ -123,6 +123,7 @@ public class RequestParsing {
 	public Request RequestFromReader(ReadableByteChannel reader) {
 		var request = NewRequest(request_onboard);
 		var buf = ByteBuffer.allocate(1024);
+		var fliped = false;
 
 		while (!done()) {
 			try {
@@ -133,18 +134,21 @@ public class RequestParsing {
 				}
 
 				buf.flip();
+				fliped = true;
 				parse(buf);
 
 				if (buf.remaining() == buf.capacity()) {
 					request.state = ParseState.STATE_ERROR;
-					throw new URITooLongException(" -- uri too long, error 414 -- bytes-read: " + read);
+					throw new URITooLongException(" -> uri too long, error 414 -- bytes-read: " + read);
 				}
 				buf.compact();
+				fliped = false;
 			} catch (Exception e) { 
 				e.printStackTrace(); 
 				break;
 			}
 		}
+		if (!fliped) buf.flip();
 
 		return request;
 	}
