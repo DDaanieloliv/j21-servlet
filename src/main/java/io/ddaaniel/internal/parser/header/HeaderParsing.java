@@ -2,6 +2,7 @@ package io.ddaaniel.internal.parser.header;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.parser.header.message.Headers;
@@ -13,22 +14,22 @@ import io.vavr.Tuple2;
  */
 public class HeaderParsing {
 
-	public final Headers fieldline = new Headers();
+	public final Headers fieldline = new Headers(new HashMap<>());
 
-	private static int IndexOf(ByteBuffer source, String string, int start) {
+	private static int IndexOf(byte[] source, String string, int start) {
 		var i = start;
-		var size = source.limit();
+		var size = source.length;
 		var bytes = string.getBytes();
 		var toRead = 0;
 		while (i < size) {
 
 			toRead = size - i;
 			if (toRead < string.length()) break;
-			if (source.get(i) == bytes[0]) {
+			if (source[i] == bytes[0]) {
 				var match = true;
 				int j = i;
 				for (byte c : bytes) {
-					if (c != source.get(j)) {
+					if (c != source[j]) {
 						match = false;
 						break;
 					}	
@@ -43,9 +44,9 @@ public class HeaderParsing {
 	}
 
 
-	private static int count(ByteBuffer source, String string) {
+	private static int count(byte[] source, String string) {
 		var i = 0;
-		var size = source.limit();
+		var size = source.length;
 		var start = 0;
 		var counts = 0;
 		while (i < size) {
@@ -63,11 +64,11 @@ public class HeaderParsing {
 	}
 	
 
-	private static byte[][] Split(ByteBuffer source, String string, Integer times) {
+	private static byte[][] Split(byte[] source, String string, Integer times) {
 		if (times == 0) return null;
 
 		var start = 0;
-		var size = source.limit();
+		var size = source.length;
 		var range = times - 1;
 		
 		var splits = new byte[count(source, string) + 1][];
@@ -84,7 +85,7 @@ public class HeaderParsing {
 			if (idx == -1) {
 				bytes = new byte[toRead];
 				for (int i = 0; i < bytes.length; i++) {
-					bytes[i] = source.get(start++);
+					bytes[i] = source[start++];
 				}
 				splits[splitsCount++] = bytes;
 				break;
@@ -94,7 +95,7 @@ public class HeaderParsing {
 			}
 
 			for (int i = 0; i < bytes.length; i++) {
-				bytes[i] = source.get(start++);
+				bytes[i] = source[start++];
 			}
 			start += string.length();
 
@@ -140,19 +141,19 @@ public class HeaderParsing {
 	}
 
 
-	private Tuple2<String, String> parseHeader(ByteBuffer fieldline) {
+	private Tuple2<String, String> parseHeader(byte[] fieldline) {
 		var parts = Split(fieldline, ":", 2);
 		if (parts.length != 2) {
-			throw new MalformedHeaderException(" -> malformed field-line -- ");
+			throw new MalformedHeaderException(" -> malformed field-line ");
 		}
 
 		var name = parts[0];
 		var value = TrimSpace(parts[1]);
 
 		if (HasSuffix(name, " ".getBytes())) {
-			throw new MalformedHeaderException(" -> malformed field-name -- ");
+			throw new MalformedHeaderException(" -> malformed field-name ");
 		}
-		return Tuple.of(String.valueOf(name), String.valueOf(value));
+		return Tuple.of(new String(name), new String(value));
 	}
 
 
@@ -160,34 +161,27 @@ public class HeaderParsing {
 		var read = 0;
 		var done = false;
 		var SEPARATOR = "\r\n";
-		var START = data.position();
+		var bytes = new byte[data.limit() - data.position()];
+		data.get(bytes);
 
 		for (;;) {
-			var EOL = IndexOf(data, SEPARATOR, START);
+			var EOL = IndexOf(bytes, SEPARATOR, 0);
 			if (EOL == -1) {
 				break;
 			}
-
-			var headerline = new byte[EOL - START];
-			data.get(headerline);
-			data.get();
-			data.get();
-			read += data.position() - START;
-			done = true;
-
 			if (EOL == 0) {
 				done = true;
+				read += SEPARATOR.length();
 				break;
 			}
-			if (read == SEPARATOR.length()) {
-				return Tuple.of(read, done);
-			}
 
-			var option = parseHeader(ByteBuffer.wrap(headerline));
+			var headerline = Arrays.copyOfRange(bytes, 0, EOL);
+			var option = parseHeader(headerline);
 			var name = option._1;
 			var value = option._2;
 			read += EOL + SEPARATOR.length();
-			fieldline.map.put(name, value);
+			fieldline.map().put(name, value);
+			bytes = Arrays.copyOfRange(bytes, EOL + SEPARATOR.length(), bytes.length);
 		}
 
 

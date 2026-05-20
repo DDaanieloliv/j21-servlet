@@ -5,8 +5,4 @@ import java.util.Map;
 /**
  * Headers
  */
-public class Headers {
-
-	public Map<String, String> map;
-	
-}
+public record Headers(Map<String, String> map) { }
