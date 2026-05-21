@@ -9,6 +9,7 @@ import io.ddaaniel.internal.exception.URITooLongException;
 import io.ddaaniel.internal.parser.request.message.Request;
 import io.ddaaniel.internal.parser.request.message.RequestLine;
 import io.ddaaniel.internal.parser.request.message.state.ParseState;
+import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 
@@ -18,33 +19,6 @@ import io.vavr.Tuple2;
 public class RequestParsing {
 
 	private final Request request_onboard = new Request();
-
-	private static int IndexOf(ByteBuffer source, String string, int start) {
-		var i = start;
-		var size = source.limit();
-		var bytes = string.getBytes();
-		var toRead = 0;
-		while (i < size) {
-
-			toRead = size - i;
-			if (toRead < string.length()) break;
-			if (source.get(i) == bytes[0]) {
-				var match = true;
-				int j = i;
-				for (byte c : bytes) {
-					if (c != source.get(j)) {
-						match = false;
-						break;
-					}	
-					j++;
-				}
-				if (match) return i;
-			}
-
-			i++;
-		}
-		return -1;
-	}
 
 	private boolean done() {
 		return request_onboard.state == ParseState.STATE_DONE || 
@@ -60,7 +34,7 @@ public class RequestParsing {
 		var read = 0;
 		var SEPARATOR = "\r\n";
 		var START = bytes.position();
-		var EOL = IndexOf(bytes, SEPARATOR, START);
+		var EOL = Util.IndexOf(bytes, SEPARATOR, START);
 		if (EOL == -1) {
 			return Tuple.of(null, read);
 		}
