@@ -1,6 +1,6 @@
 package io.ddaaniel.internal.parser.request.message;
 
-import io.ddaaniel.internal.parser.request.message.state.ParseState;
+import io.ddaaniel.internal.parser.request.message.enums.ParseState;
 
 /**
  * Request

@@ -21,6 +21,28 @@ public class HeaderParsing {
 		return this;
 	}
 
+	public String Get(String name) {
+		return fieldline.map().get(name.toLowerCase());
+	}
+
+	public void Set(String name, String value) {
+		fieldline.map().put(name.toLowerCase(), value);
+	}
+
+	public boolean isToken(byte[] bytes) {
+		var found = false;
+		for (byte i : bytes) {
+			if (i >= 'A' && i <= 'Z' || i >= 'a' && i <= 'z' || i >= '0' && i <= '9') {
+				found = true;
+			}
+			switch (i) {
+				case '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_','`', '|', '~' : found = true;
+			}
+			if (!found) return false;
+		}
+		return true;
+	}
+
 	private Tuple2<String, String> parseHeader(byte[] fieldline) {
 		var parts = Util.Split(fieldline, ":", 2);
 		if (parts.length != 2) {
@@ -60,7 +82,7 @@ public class HeaderParsing {
 			var option = parseHeader(headerline);
 			var name = option._1;
 			var value = option._2;
-			fieldline.map().put(name, value);
+			Set(name, value);
 			read += (EOL - START) + SEPARATOR.length();
 			START = data.position();
 		}

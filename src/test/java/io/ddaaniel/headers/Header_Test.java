@@ -22,7 +22,6 @@ public class Header_Test {
 		var headers = new HeaderParsing().NewHeaders();
 		var data = ByteBuffer.wrap("Host: localhost:42069\r\nFooFoo:       barbar     \r\n\r\n".getBytes());
 		var badData = ByteBuffer.wrap("        Host : localhost:42069          \r\n\r\n".getBytes());
-		var fieldline = headers.fieldline;
 		var option = headers.Parse(data);
 
 		assertEquals(52, option._1);
@@ -30,7 +29,7 @@ public class Header_Test {
 			headers.Parse(badData); 
 		});
 		assertNotNull(headers);
-		assertEquals("localhost:42069", fieldline.map().get("Host"));
+		assertEquals("localhost:42069", headers.Get("Host"));
 		assertTrue(option._2);
 		assertEquals(err.getMessage(), " -> malformed field-name ");
 	}

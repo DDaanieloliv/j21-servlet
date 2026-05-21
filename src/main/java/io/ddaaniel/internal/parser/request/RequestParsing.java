@@ -8,7 +8,7 @@ import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
 import io.ddaaniel.internal.parser.request.message.Request;
 import io.ddaaniel.internal.parser.request.message.RequestLine;
-import io.ddaaniel.internal.parser.request.message.state.ParseState;
+import io.ddaaniel.internal.parser.request.message.enums.ParseState;
 import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
