@@ -30,8 +30,8 @@ public class HeaderParsing {
 	}
 
 	public boolean isToken(byte[] bytes) {
-		var found = false;
 		for (byte i : bytes) {
+			var found = false;
 			if (i >= 'A' && i <= 'Z' || i >= 'a' && i <= 'z' || i >= '0' && i <= '9') {
 				found = true;
 			}
@@ -82,6 +82,11 @@ public class HeaderParsing {
 			var option = parseHeader(headerline);
 			var name = option._1;
 			var value = option._2;
+
+			System.out.println(name);
+			if (!isToken(name.getBytes())) {
+				throw new MalformedHeaderException(" -> malformed header-name ");
+			}
 			Set(name, value);
 			read += (EOL - START) + SEPARATOR.length();
 			START = data.position();

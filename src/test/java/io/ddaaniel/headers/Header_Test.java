@@ -21,17 +21,22 @@ public class Header_Test {
 	public void TestHeaderParse() {
 		var headers = new HeaderParsing().NewHeaders();
 		var data = ByteBuffer.wrap("Host: localhost:42069\r\nFooFoo:       barbar     \r\n\r\n".getBytes());
-		var badData = ByteBuffer.wrap("        Host : localhost:42069          \r\n\r\n".getBytes());
+		var wrongFormat = ByteBuffer.wrap("        Host : localhost:42069          \r\n\r\n".getBytes());
+		var wrongToken = ByteBuffer.wrap("H®st: localhost:42069\r\n\r\n".getBytes());
 		var option = headers.Parse(data);
 
-		assertEquals(52, option._1);
-		var err = assertThrowsExactly(MalformedHeaderException.class, () -> {
-			headers.Parse(badData); 
+		var errBadToken = assertThrowsExactly(MalformedHeaderException.class, () -> {
+			headers.Parse(wrongToken); 
 		});
+		var errBadHeader = assertThrowsExactly(MalformedHeaderException.class, () -> {
+			headers.Parse(wrongFormat); 
+		});
+		assertEquals(52, option._1);
 		assertNotNull(headers);
 		assertEquals("localhost:42069", headers.Get("Host"));
 		assertTrue(option._2);
-		assertEquals(err.getMessage(), " -> malformed field-name ");
+		assertEquals(errBadToken.getMessage(), " -> malformed header-name ");
+		assertEquals(errBadHeader.getMessage(), " -> malformed field-name ");
 	}
 
 }
