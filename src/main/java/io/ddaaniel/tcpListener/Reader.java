@@ -7,8 +7,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 
-import io.ddaaniel.internal.parser.request.RequestParsing;
-import io.ddaaniel.internal.parser.request.message.Request;
+import io.ddaaniel.internal.parser.request.Request;
+import io.ddaaniel.internal.parser.request.message.Requests;
 
 /**
  * Reader
@@ -20,18 +20,18 @@ public abstract class Reader {
 
 			var server = ServerSocketChannel.open();
 			server.bind(new InetSocketAddress(42069));
-			var request = new Request();
+			var request = new Requests();
 
 			while (true) {
 				var socket = server.accept();
-				request = new RequestParsing().RequestFromReader(socket);
+				request = new Request().RequestFromReader(socket);
 				break;
 			}
 
 			System.out.println("Request Line:");
-			System.out.println(" - Method: " + request.requestLine.Method); 
-			System.out.println(" - Target: " + request.requestLine.RequestTarget);
-			System.out.println(" - Version: " + request.requestLine.HttpVersion);
+			System.out.println(" - Method: " + request.RequestLine.Method); 
+			System.out.println(" - Target: " + request.RequestLine.RequestTarget);
+			System.out.println(" - Version: " + request.RequestLine.HttpVersion);
 
 		} catch (Exception e) { e.printStackTrace(); }
 	}

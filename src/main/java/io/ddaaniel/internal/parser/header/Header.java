@@ -12,12 +12,12 @@ import io.vavr.Tuple2;
 /**
  * HeaderParsing
  */
-public class HeaderParsing {
+public class Header {
 
 	public final Headers fieldline = new Headers(new HashMap<>());
 
 
-	public HeaderParsing NewHeaders(){
+	public Header NewHeaders(){
 		return this;
 	}
 
@@ -26,7 +26,12 @@ public class HeaderParsing {
 	}
 
 	public void Set(String name, String value) {
-		fieldline.map().put(name.toLowerCase(), value);
+		var key = name.toLowerCase();
+		var map = fieldline.map();
+		if (map.containsKey(key)) {
+			var v = map.get(key);
+			map.put(key, String.format("%s,%s", v, value));
+		} else map.put(key, value);
 	}
 
 	public boolean isToken(byte[] bytes) {
@@ -83,7 +88,6 @@ public class HeaderParsing {
 			var name = option._1;
 			var value = option._2;
 
-			System.out.println(name);
 			if (!isToken(name.getBytes())) {
 				throw new MalformedHeaderException(" -> malformed header-name ");
 			}

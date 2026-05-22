@@ -6,7 +6,8 @@ import java.nio.charset.StandardCharsets;
 
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
-import io.ddaaniel.internal.parser.request.message.Request;
+import io.ddaaniel.internal.parser.header.Header;
+import io.ddaaniel.internal.parser.request.message.Requests;
 import io.ddaaniel.internal.parser.request.message.RequestLine;
 import io.ddaaniel.internal.parser.request.message.enums.ParseState;
 import io.ddaaniel.internal.parser.util.Util;
@@ -14,19 +15,20 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 
 /**
- * RequestParsing
+ * Request
  */
-public class RequestParsing {
+public class Request {
 
-	private final Request request_onboard = new Request();
+	private final Requests request_onboard = new Requests();
 
 	private boolean done() {
-		return request_onboard.state == ParseState.STATE_DONE || 
-			request_onboard.state == ParseState.STATE_ERROR;
+		return request_onboard.State == ParseState.STATE_DONE || 
+			request_onboard.State == ParseState.STATE_ERROR;
 	}
 
-	private Request NewRequest(Request request_onboard) {
-		request_onboard.state = ParseState.STATE_INIT;
+	private Requests NewRequest(Requests request_onboard) {
+		request_onboard.State = ParseState.STATE_INIT;
+		request_onboard.Headers = new Header();
 		return request_onboard;
 	}
 
@@ -65,36 +67,43 @@ public class RequestParsing {
 	}
 
 
-	private Integer parse(ByteBuffer buf) {
-		var pos = buf.position();
+	private Integer parse(ByteBuffer buf) throws Exception {
+		var read = 0;
 		outer:
 		for (;;) {
-			switch (request_onboard.state) {
+			switch (request_onboard.State) {
 				case STATE_INIT:
 					buf.mark();
-					var option = parseRequestLine(buf);
-					var requestLine = option._1;
-					var read = option._2;
-					if (read == 0) {
+					var parsedRequestLine = parseRequestLine(buf);
+					var requestLine = parsedRequestLine._1;
+					var totalReadR = parsedRequestLine._2;
+					if (totalReadR == 0) {
 						buf.reset();
 						break outer;
 					}
-					request_onboard.requestLine = requestLine;
-					request_onboard.state = ParseState.STATE_DONE;
-					break;
-
+					request_onboard.RequestLine = requestLine;
+					read += totalReadR;
+					request_onboard.State = ParseState.STATE_HEADERS;
 				case STATE_ERROR:
-					return 0;
+					throw new Exception("Somehow its go wrong");
+				case STATE_HEADERS:
+					var parsedHeader = request_onboard.Headers.Parse(buf);
+					var totalReadH = parsedHeader._1;
+					var done = parsedHeader._2; 
+					if (totalReadH == 0) break outer;
+					read += totalReadH;
+					if (done) request_onboard.State = ParseState.STATE_DONE;
 				case STATE_DONE: 
 					break outer;
+				default: 
+					throw new Exception("Somehow its go wrong");
 			}
 		}
-		var read = buf.position() - pos;
 		return read;
 	}
 
 	
-	public Request RequestFromReader(ReadableByteChannel reader) {
+	public Requests RequestFromReader(ReadableByteChannel reader) {
 		var request = NewRequest(request_onboard);
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
@@ -103,7 +112,7 @@ public class RequestParsing {
 			try {
 				var read = reader.read(buf);
 				if (read == -1) {
-					if (!done()) request.state = ParseState.STATE_ERROR; 
+					if (!done()) request.State = ParseState.STATE_ERROR; 
 					break;
 				}
 
@@ -112,7 +121,7 @@ public class RequestParsing {
 				parse(buf);
 
 				if (buf.remaining() == buf.capacity()) {
-					request.state = ParseState.STATE_ERROR;
+					request.State = ParseState.STATE_ERROR;
 					throw new URITooLongException(" -> uri too long, error 414 -- bytes-read: " + read);
 				}
 				buf.compact();

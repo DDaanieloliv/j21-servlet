@@ -2,10 +2,13 @@ package io.ddaaniel.request;
 
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.internal.parser.request.RequestParsing;
+import io.ddaaniel.internal.exception.MalformedHeaderException;
+import io.ddaaniel.internal.parser.request.Request;
 import io.ddaaniel.mocks.ChunkReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 
 /**
@@ -18,22 +21,45 @@ public class Request_Test {
 	 */
 	@Test
 	public void TestRequestLineParse() {
+		// Test: Good GET Request line without path
 		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
 		var reader = new ChunkReader(bytes, 2);
-		var request = new RequestParsing().RequestFromReader(reader);
+		var request = new Request().RequestFromReader(reader);
 
-		assertEquals("GET", request.requestLine.Method);
-		assertEquals("/", request.requestLine.RequestTarget);
-		assertEquals("1.1", request.requestLine.HttpVersion);
+		assertEquals("GET", request.RequestLine.Method);
+		assertEquals("/", request.RequestLine.RequestTarget);
+		assertEquals("1.1", request.RequestLine.HttpVersion);
 
-
+		// Test: Good GET Request line with path
 		bytes = "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
 		reader = new ChunkReader(bytes, 2);
-		request = new RequestParsing().RequestFromReader(reader);
+		request = new Request().RequestFromReader(reader);
 
-		assertEquals("GET", request.requestLine.Method);
-    assertEquals("/coffee", request.requestLine.RequestTarget);
-    assertEquals("1.1", request.requestLine.HttpVersion);
+		assertEquals("GET", request.RequestLine.Method);
+		assertEquals("/coffee", request.RequestLine.RequestTarget);
+		assertEquals("1.1", request.RequestLine.HttpVersion);
 	}
 
+	/**
+	 * Rigorous Test :-)
+	 */
+	@Test
+	public void TestParseHeaders() {
+		// Test: Standard Headers
+		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
+		var reader = new ChunkReader(bytes, 3);
+		var request = new Request().RequestFromReader(reader);
+
+		assertNotNull(request);
+		assertEquals("localhost:42069", request.Headers.Get("host"));
+		assertEquals("curl/8.20.0", request.Headers.Get("user-agent"));
+		assertEquals("*/*", request.Headers.Get("accept"));
+
+		// Test: Malformed Header
+		bytes = "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".getBytes();
+		var readerErr = new ChunkReader(bytes, 3);
+		assertThrowsExactly(MalformedHeaderException.class, () -> {
+			new Request().RequestFromReader(readerErr);
+		}, " -> malformed field-name ");
+	}
 }
