@@ -3,6 +3,7 @@ package io.ddaaniel.internal.parser.request;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
 
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
@@ -84,6 +85,7 @@ public class Request {
 					request_onboard.RequestLine = requestLine;
 					read += totalReadR;
 					request_onboard.State = ParseState.STATE_HEADERS;
+					break;
 				case STATE_ERROR:
 					throw new Exception("Somehow its go wrong");
 				case STATE_HEADERS:
@@ -93,6 +95,7 @@ public class Request {
 					if (totalReadH == 0) break outer;
 					read += totalReadH;
 					if (done) request_onboard.State = ParseState.STATE_DONE;
+					break;
 				case STATE_DONE: 
 					break outer;
 				default: 
@@ -126,9 +129,9 @@ public class Request {
 				}
 				buf.compact();
 				fliped = false;
-			} catch (Exception e) { 
-				e.printStackTrace(); 
-				break;
+			} catch (Exception  exception) { 
+				if (exception instanceof RuntimeException) throw (RuntimeException) exception;
+				throw new RuntimeException(" -> Failure to parse the request: ", exception);
 			}
 		}
 		if (!fliped) buf.flip();

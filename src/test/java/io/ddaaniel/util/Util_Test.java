@@ -89,10 +89,10 @@ public class Util_Test {
 		var times = 3;
 		var returns = Util.Split(source, string, times);
 
-		assertEquals(returns.length, times);
-		assertEquals(new String(returns[0]), "AbCdEfG");
-		assertEquals(new String(returns[1]), "hIjKlMnOpQ");
-		assertEquals(new String(returns[2]), "hrStUvWxYz");
+		assertEquals(times, returns.length);
+		assertEquals("AbCdEfG", new String(returns[0]));
+		assertEquals("hIjKlMnOpQ", new String(returns[1]));
+		assertEquals("hrStUvWxYz", new String(returns[2]));
 	}
 
 

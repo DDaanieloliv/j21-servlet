@@ -58,8 +58,9 @@ public class Request_Test {
 		// Test: Malformed Header
 		bytes = "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".getBytes();
 		var readerErr = new ChunkReader(bytes, 3);
-		assertThrowsExactly(MalformedHeaderException.class, () -> {
+		var err = assertThrowsExactly(MalformedHeaderException.class, () -> {
 			new Request().RequestFromReader(readerErr);
-		}, " -> malformed field-name ");
+		});
+		assertEquals(" -> malformed header-name ", err.getMessage());
 	}
 }

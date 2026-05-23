@@ -31,7 +31,7 @@ public class Header_Test {
 		var badHeaderByToken = new Header().NewHeaders();
 		var errBadToken = assertThrowsExactly(MalformedHeaderException.class, () -> {
 			badHeaderByToken.Parse(wrongToken); });
-		assertEquals(errBadToken.getMessage(), " -> malformed header-name ");
+		assertEquals(" -> malformed header-name ", errBadToken.getMessage());
 
 
 		var wrongFormat = ByteBuffer.wrap("        Host : localhost:42069          \r\n\r\n".getBytes());
