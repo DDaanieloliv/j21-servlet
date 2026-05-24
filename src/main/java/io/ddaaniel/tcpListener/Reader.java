@@ -6,6 +6,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.util.HashMap;
 
 import io.ddaaniel.internal.parser.request.Request;
 import io.ddaaniel.internal.parser.request.message.Requests;
@@ -21,10 +22,12 @@ public abstract class Reader {
 			var server = ServerSocketChannel.open();
 			server.bind(new InetSocketAddress(42069));
 			var request = new Requests();
+			var headers = new HashMap<String, String>();
 
 			while (true) {
 				var socket = server.accept();
 				request = new Request().RequestFromReader(socket);
+				headers = request.Headers.fieldline.map();
 				break;
 			}
 
@@ -32,6 +35,8 @@ public abstract class Reader {
 			System.out.println(" - Method: " + request.RequestLine.Method); 
 			System.out.println(" - Target: " + request.RequestLine.RequestTarget);
 			System.out.println(" - Version: " + request.RequestLine.HttpVersion);
+			System.out.println("Headers:");
+			headers.forEach((key, value) -> System.out.println(" - " + key + ": " + value));
 
 		} catch (Exception e) { e.printStackTrace(); }
 	}
@@ -78,7 +83,6 @@ public abstract class Reader {
 					}
 				}
 			}
-
 		} catch (Exception e) { e.printStackTrace(); }
 
 	}

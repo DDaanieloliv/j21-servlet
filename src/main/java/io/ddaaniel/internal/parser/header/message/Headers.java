@@ -1,8 +1,8 @@
 package io.ddaaniel.internal.parser.header.message;
 
-import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Headers
  */
-public record Headers(Map<String, String> map) { }
+public record Headers(HashMap<String, String> map) { }

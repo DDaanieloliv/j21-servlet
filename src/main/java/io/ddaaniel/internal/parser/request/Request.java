@@ -3,7 +3,6 @@ package io.ddaaniel.internal.parser.request;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.logging.Logger;
 
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;

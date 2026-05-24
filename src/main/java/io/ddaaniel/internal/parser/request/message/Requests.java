@@ -11,7 +11,9 @@ public class Requests {
 	public Header Headers;
 	public ParseState State;
 
-	public Requests(){}
+	public Requests(){
+		this.Headers = new Header();
+	}
 
 	public Requests(RequestLine r, ParseState s, Header h) {
 		this.RequestLine = r;
