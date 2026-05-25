@@ -34,7 +34,7 @@ public class Header {
 		} else map.put(key, value);
 	}
 
-	public boolean isToken(byte[] bytes) {
+  public boolean isToken(byte[] bytes) {
 		for (byte i : bytes) {
 			var found = false;
 			if (i >= 'A' && i <= 'Z' || i >= 'a' && i <= 'z' || i >= '0' && i <= '9') {
@@ -75,6 +75,8 @@ public class Header {
 				break;
 			}
 			if (EOL - START == 0) {
+				data.get();
+				data.get();
 				done = true;
 				read += SEPARATOR.length();
 				break;

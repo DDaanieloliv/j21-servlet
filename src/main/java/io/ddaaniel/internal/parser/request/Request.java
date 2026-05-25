@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 
+import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
 import io.ddaaniel.internal.parser.header.Header;
@@ -12,7 +13,7 @@ import io.ddaaniel.internal.parser.request.message.RequestLine;
 import io.ddaaniel.internal.parser.request.message.enums.ParseState;
 import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
-import io.vavr.Tuple2;
+	import io.vavr.Tuple2;
 
 /**
  * Request
@@ -54,7 +55,7 @@ public class Request {
 		bytes.get();
 		bytes.get();
 
-		read += (bytes.position() - START); // (EOL + SEPARATOR.length()) - START;
+		read += (bytes.position() - START);
 		var startLine = new String(lineBytes, StandardCharsets.UTF_8);
 		var parts = startLine.split(" ");
 		if (parts.length != 3) { 
@@ -80,6 +81,10 @@ public class Request {
 		outer:
 		for (;;) {
 			switch (r.State) {
+				case STATE_DONE: 
+					break outer;
+				case STATE_ERROR:
+					throw new Exception("Somehow its go wrong");
 				case STATE_INIT:
 					buf.mark();
 					var parsedRequestLine = parseRequestLine(buf);
@@ -93,24 +98,23 @@ public class Request {
 					read += totalReadR;
 					r.State = ParseState.STATE_HEADERS;
 					break;
-				case STATE_ERROR:
-					throw new Exception("Somehow its go wrong");
+
 				case STATE_HEADERS:
 					var parsedHeader = r.Headers.Parse(buf);
 					var totalReadH = parsedHeader._1;
 					var done = parsedHeader._2; 
 					if (totalReadH == 0) break outer;
 					read += totalReadH;
-					if (done) r.State = ParseState.STATE_DONE;
+					if (done) r.State = ParseState.STATE_BODY;
 					break;
+
 				case STATE_BODY:
 					var length = GetInt(r.Headers, "content-length" , 0);
 					if (length == 0) {
 						r.State = ParseState.STATE_DONE;
 						break;
 					}
-
-					var stillMissing = length - r.Body.length();
+					var stillMissing = length - r.Body.getBytes().length;
 					var available = buf.remaining();
 					var remaining = Math.min(stillMissing, available);
 					if (remaining > 0) {
@@ -123,8 +127,6 @@ public class Request {
 						r.State = ParseState.STATE_DONE;
 					} else break outer;
 					break;
-				case STATE_DONE: 
-					break outer;
 				default: 
 					throw new Exception("Somehow its go wrong");
 			}
@@ -138,14 +140,16 @@ public class Request {
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
 
-		while (!done()) {
-			try {
+		try {
+			while (!done()) {
 				var read = reader.read(buf);
 				if (read == -1) {
-					if (!done()) request.State = ParseState.STATE_ERROR; 
+					if (request.State != ParseState.STATE_DONE) {
+						request.State = ParseState.STATE_ERROR; 
+						throw new MalformedBodyException(" -> body shorter than reported content-length ");
+					}
 					break;
 				}
-
 				buf.flip();
 				fliped = true;
 				parse(buf);
@@ -156,13 +160,13 @@ public class Request {
 				}
 				buf.compact();
 				fliped = false;
-			} catch (Exception  exception) { 
-				if (exception instanceof RuntimeException) throw (RuntimeException) exception;
-				throw new RuntimeException(" -> Failure to parse the request: ", exception);
 			}
+		} catch (Exception  exception) { 
+			if (exception instanceof RuntimeException) throw (RuntimeException) exception;
+			throw new RuntimeException(" -> Failure to parse the request: ", exception);
 		}
-		if (!fliped) buf.flip();
 
+		if (!fliped) buf.flip();
 		return request;
 	}
 

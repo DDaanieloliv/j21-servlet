@@ -2,6 +2,7 @@ package io.ddaaniel.request;
 
 import org.junit.jupiter.api.Test;
 
+import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.parser.request.Request;
 import io.ddaaniel.mocks.ChunkReader;
@@ -80,13 +81,17 @@ public class Request_Test {
 		assertNotNull(request);
 		assertEquals("hello world!\n", new String(request.Body));
 
+
 		// Test: Body shorter than reported content length
-		data = ("Post /submit HTTP/1.1\r\n" +
+		var badData = ("Post /submit HTTP/1.1\r\n" +
 			"Host: localhost:42069\r\n" +
 			"Content-Length: 20\r\n" +
 			"\r\n" +
 			"partial content").getBytes();
-		reader = new ChunkReader(data, 3);
-		// assertThrowsExactly();
+		var badReader = new ChunkReader(badData, 3);
+		var err = assertThrowsExactly(MalformedBodyException.class, () -> {
+			new Request().RequestFromReader(badReader); 
+		});
+		assertEquals(" -> body shorter than reported content-length ", err.getMessage());
 	}
 }

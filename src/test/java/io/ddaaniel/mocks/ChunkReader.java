@@ -24,7 +24,7 @@ public class ChunkReader implements ReadableByteChannel {
 	@Override
 	public int read(ByteBuffer buf) {
 		if (pos >= data.length) {
-			return 0;
+			return -1;
 		}
 		var endIndex = Math.min(pos + numBytesPerRead, data.length);
 		var view = Arrays.copyOfRange(data, pos, endIndex);

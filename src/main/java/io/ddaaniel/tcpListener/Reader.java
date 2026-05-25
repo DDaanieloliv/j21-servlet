@@ -37,6 +37,8 @@ public abstract class Reader {
 			System.out.println(" - Version: " + request.RequestLine.HttpVersion);
 			System.out.println("Headers:");
 			headers.forEach((key, value) -> System.out.println(" - " + key + ": " + value));
+			System.out.println("Body:");
+			System.out.println(" - " + request.Body + "\n");
 
 		} catch (Exception e) { e.printStackTrace(); }
 	}
