@@ -6,6 +6,7 @@ package io.ddaaniel.internal.parser.request.message.enums;
 public enum ParseState {
 	STATE_INIT,
 	STATE_HEADERS,
+	STATE_BODY,
 	STATE_DONE,
 	STATE_ERROR;
 }

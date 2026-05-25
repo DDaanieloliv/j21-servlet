@@ -10,14 +10,16 @@ public class Requests {
 	public RequestLine RequestLine;
 	public Header Headers;
 	public ParseState State;
+	public String Body;
 
 	public Requests(){
 		this.Headers = new Header();
 	}
 
-	public Requests(RequestLine r, ParseState s, Header h) {
+	public Requests(RequestLine r, ParseState s, Header h, String b) {
 		this.RequestLine = r;
 		this.Headers = h;
 		this.State = s;
+		this.Body = b;
 	}
 }

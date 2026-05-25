@@ -19,17 +19,25 @@ import io.vavr.Tuple2;
  */
 public class Request {
 
-	private final Requests request_onboard = new Requests();
+	private final Requests r = new Requests();
 
 	private boolean done() {
-		return request_onboard.State == ParseState.STATE_DONE || 
-			request_onboard.State == ParseState.STATE_ERROR;
+		return r.State == ParseState.STATE_DONE || 
+			r.State == ParseState.STATE_ERROR;
 	}
 
-	private Requests NewRequest(Requests request_onboard) {
-		request_onboard.State = ParseState.STATE_INIT;
-		request_onboard.Headers = new Header();
-		return request_onboard;
+	private int GetInt(Header header, String name, int defaultValue) {
+		var valueStr = header.Get(name);
+		if (valueStr == null) return defaultValue;
+		var value = Integer.parseInt(valueStr);
+		return value;
+	}
+
+	private Requests NewRequest(Requests r) {
+		r.State = ParseState.STATE_INIT;
+		r.Headers = new Header();
+		r.Body = "";
+		return r;
 	}
 
 	private Tuple2<RequestLine, Integer> parseRequestLine(ByteBuffer bytes) {
@@ -71,7 +79,7 @@ public class Request {
 		var read = 0;
 		outer:
 		for (;;) {
-			switch (request_onboard.State) {
+			switch (r.State) {
 				case STATE_INIT:
 					buf.mark();
 					var parsedRequestLine = parseRequestLine(buf);
@@ -81,19 +89,39 @@ public class Request {
 						buf.reset();
 						break outer;
 					}
-					request_onboard.RequestLine = requestLine;
+					r.RequestLine = requestLine;
 					read += totalReadR;
-					request_onboard.State = ParseState.STATE_HEADERS;
+					r.State = ParseState.STATE_HEADERS;
 					break;
 				case STATE_ERROR:
 					throw new Exception("Somehow its go wrong");
 				case STATE_HEADERS:
-					var parsedHeader = request_onboard.Headers.Parse(buf);
+					var parsedHeader = r.Headers.Parse(buf);
 					var totalReadH = parsedHeader._1;
 					var done = parsedHeader._2; 
 					if (totalReadH == 0) break outer;
 					read += totalReadH;
-					if (done) request_onboard.State = ParseState.STATE_DONE;
+					if (done) r.State = ParseState.STATE_DONE;
+					break;
+				case STATE_BODY:
+					var length = GetInt(r.Headers, "content-length" , 0);
+					if (length == 0) {
+						r.State = ParseState.STATE_DONE;
+						break;
+					}
+
+					var stillMissing = length - r.Body.length();
+					var available = buf.remaining();
+					var remaining = Math.min(stillMissing, available);
+					if (remaining > 0) {
+						var chunk = new byte[remaining];
+						buf.get(chunk);
+						r.Body += new String(chunk);
+						read += remaining;
+					}
+					if (length == r.Body.length()) {
+						r.State = ParseState.STATE_DONE;
+					} else break outer;
 					break;
 				case STATE_DONE: 
 					break outer;
@@ -106,7 +134,7 @@ public class Request {
 
 	
 	public Requests RequestFromReader(ReadableByteChannel reader) {
-		var request = NewRequest(request_onboard);
+		var request = NewRequest(r);
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
 

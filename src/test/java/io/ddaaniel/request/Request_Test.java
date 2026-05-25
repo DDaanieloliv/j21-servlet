@@ -63,4 +63,30 @@ public class Request_Test {
 		});
 		assertEquals(" -> malformed header-name ", err.getMessage());
 	}
+
+	/**
+	 * Rigorous Test :-)
+	 */
+	@Test
+	public void TestParseBody() {
+		// Test: Standard Body
+		var data = ("Post /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 13\r\n" +
+			"\r\n" +
+			"hello world!\n").getBytes();
+		var reader = new ChunkReader(data, 3);
+		var request = new Request().RequestFromReader(reader);
+		assertNotNull(request);
+		assertEquals("hello world!\n", new String(request.Body));
+
+		// Test: Body shorter than reported content length
+		data = ("Post /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 20\r\n" +
+			"\r\n" +
+			"partial content").getBytes();
+		reader = new ChunkReader(data, 3);
+		// assertThrowsExactly();
+	}
 }
