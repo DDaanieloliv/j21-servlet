@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import org.junit.jupiter.api.Test;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
-import io.ddaaniel.internal.parser.header.Header;
+import io.ddaaniel.internal.parser.header.Headers;
 
 
 /**
@@ -19,7 +19,7 @@ public class Header_Test {
 
 	@Test
 	public void TestHeaderParse() {
-		var headers = new Header().NewHeaders();
+		var headers = new Headers().NewHeaders();
 		var data = ByteBuffer.wrap("Host: localhost:42069\r\nFooFoo:       barbar     \r\n\r\n".getBytes());
 		var option = headers.Parse(data);
 		assertEquals(52, option._1);
@@ -28,27 +28,27 @@ public class Header_Test {
 
 
 		var wrongToken = ByteBuffer.wrap("H®st: localhost:42069\r\n\r\n".getBytes());
-		var badHeaderByToken = new Header().NewHeaders();
+		var badHeaderByToken = new Headers().NewHeaders();
 		var errBadToken = assertThrowsExactly(MalformedHeaderException.class, () -> {
 			badHeaderByToken.Parse(wrongToken); });
 		assertEquals(" -> malformed header-name ", errBadToken.getMessage());
 
 
 		var wrongFormat = ByteBuffer.wrap("        Host : localhost:42069          \r\n\r\n".getBytes());
-		var badHeaderByName = new Header().NewHeaders();
+		var badHeaderByName = new Headers().NewHeaders();
 		var errBadHeader = assertThrowsExactly(MalformedHeaderException.class, () -> {
 			badHeaderByName.Parse(wrongFormat); });
 		assertEquals(errBadHeader.getMessage(), " -> malformed field-name ");
 
 
-		headers = new Header().NewHeaders();
+		headers = new Headers().NewHeaders();
 		data = ByteBuffer.wrap("Host: localhost:42069\r\nHost: localhost:42069\r\n".getBytes());
 		option = headers.Parse(data);
 		assertEquals(null, headers.Get("MissingKey"));
 		assertFalse(option._2);
 
 
-		headers = new Header().NewHeaders();
+		headers = new Headers().NewHeaders();
 		data = ByteBuffer.wrap("Host: localhost:42069\r\nHost: localhost:42069\r\n".getBytes());
 		option = headers.Parse(data);
 		assertEquals("localhost:42069,localhost:42069", headers.Get("HOST"));

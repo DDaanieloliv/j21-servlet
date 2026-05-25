@@ -1,22 +1,22 @@
 package io.ddaaniel.internal.parser.request.message;
 
-import io.ddaaniel.internal.parser.header.Header;
+import io.ddaaniel.internal.parser.header.Headers;
 import io.ddaaniel.internal.parser.request.message.enums.ParseState;
 
 /**
- * Requests
+ * Request
  */
-public class Requests {
+public class Request {
 	public RequestLine RequestLine;
-	public Header Headers;
+	public Headers Headers;
 	public ParseState State;
 	public String Body;
 
-	public Requests(){
-		this.Headers = new Header();
+	public Request(){
+		this.Headers = new Headers();
 	}
 
-	public Requests(RequestLine r, ParseState s, Header h, String b) {
+	public Request(RequestLine r, ParseState s, Headers h, String b) {
 		this.RequestLine = r;
 		this.Headers = h;
 		this.State = s;

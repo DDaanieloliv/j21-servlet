@@ -7,8 +7,8 @@ import java.nio.charset.StandardCharsets;
 import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
-import io.ddaaniel.internal.parser.header.Header;
-import io.ddaaniel.internal.parser.request.message.Requests;
+import io.ddaaniel.internal.parser.header.Headers;
+import io.ddaaniel.internal.parser.request.message.Request;
 import io.ddaaniel.internal.parser.request.message.RequestLine;
 import io.ddaaniel.internal.parser.request.message.enums.ParseState;
 import io.ddaaniel.internal.parser.util.Util;
@@ -16,27 +16,26 @@ import io.vavr.Tuple;
 	import io.vavr.Tuple2;
 
 /**
- * Request
+ * Requests
  */
-public class Request {
+public class Requests {
 
-	private final Requests r = new Requests();
+	public final Request r = new Request();
 
 	private boolean done() {
-		return r.State == ParseState.STATE_DONE || 
-			r.State == ParseState.STATE_ERROR;
+		return r.State == ParseState.STATE_DONE || r.State == ParseState.STATE_ERROR;
 	}
 
-	private int GetInt(Header header, String name, int defaultValue) {
+	public int GetInt(Headers header, String name, int defaultValue) {
 		var valueStr = header.Get(name);
 		if (valueStr == null) return defaultValue;
 		var value = Integer.parseInt(valueStr);
 		return value;
 	}
 
-	private Requests NewRequest(Requests r) {
+	private Request NewRequest(Request r) {
 		r.State = ParseState.STATE_INIT;
-		r.Headers = new Header();
+		r.Headers = new Headers();
 		r.Body = "";
 		return r;
 	}
@@ -135,7 +134,7 @@ public class Request {
 	}
 
 	
-	public Requests RequestFromReader(ReadableByteChannel reader) {
+	public Request RequestFromReader(ReadableByteChannel reader) {
 		var request = NewRequest(r);
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;

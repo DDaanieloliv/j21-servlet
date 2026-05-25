@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
-import io.ddaaniel.internal.parser.header.message.Headers;
+import io.ddaaniel.internal.parser.header.message.Header;
 import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -12,29 +12,28 @@ import io.vavr.Tuple2;
 /**
  * HeaderParsing
  */
-public class Header {
+public class Headers {
 
-	public final Headers fieldline = new Headers(new HashMap<>());
+	public final Header h = new Header(new HashMap<>());
 
-
-	public Header NewHeaders(){
+	public Headers NewHeaders(){
 		return this;
 	}
 
 	public String Get(String name) {
-		return fieldline.map().get(name.toLowerCase());
+		return h.map().get(name.toLowerCase());
 	}
 
 	public void Set(String name, String value) {
 		var key = name.toLowerCase();
-		var map = fieldline.map();
+		var map = h.map();
 		if (map.containsKey(key)) {
 			var v = map.get(key);
 			map.put(key, String.format("%s,%s", v, value));
 		} else map.put(key, value);
 	}
 
-  public boolean isToken(byte[] bytes) {
+  private boolean isToken(byte[] bytes) {
 		for (byte i : bytes) {
 			var found = false;
 			if (i >= 'A' && i <= 'Z' || i >= 'a' && i <= 'z' || i >= '0' && i <= '9') {
@@ -48,8 +47,9 @@ public class Header {
 		return true;
 	}
 
-	private Tuple2<String, String> parseHeader(byte[] fieldline) {
-		var parts = Util.Split(fieldline, ":", 2);
+
+	private Tuple2<String, String> parseHeader(byte[] h) {
+		var parts = Util.Split(h, ":", 2);
 		if (parts.length != 2) {
 			throw new MalformedHeaderException(" -> malformed field-line ");
 		}
@@ -97,7 +97,6 @@ public class Header {
 			read += (EOL - START) + SEPARATOR.length();
 			START = data.position();
 		}
-
 
 		return Tuple.of(read, done);
 	}

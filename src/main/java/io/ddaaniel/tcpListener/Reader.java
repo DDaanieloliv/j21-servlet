@@ -8,8 +8,8 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashMap;
 
-import io.ddaaniel.internal.parser.request.Request;
-import io.ddaaniel.internal.parser.request.message.Requests;
+import io.ddaaniel.internal.parser.request.Requests;
+import io.ddaaniel.internal.parser.request.message.Request;
 
 /**
  * Reader
@@ -21,13 +21,13 @@ public abstract class Reader {
 
 			var server = ServerSocketChannel.open();
 			server.bind(new InetSocketAddress(42069));
-			var request = new Requests();
+			var request = new Request();
 			var headers = new HashMap<String, String>();
 
 			while (true) {
 				var socket = server.accept();
-				request = new Request().RequestFromReader(socket);
-				headers = request.Headers.fieldline.map();
+				request = new Requests().RequestFromReader(socket);
+				headers = request.Headers.h.map();
 				break;
 			}
 

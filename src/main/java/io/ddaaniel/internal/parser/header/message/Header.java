@@ -3,6 +3,6 @@ package io.ddaaniel.internal.parser.header.message;
 import java.util.HashMap;
 
 /**
- * Headers
+ * Header
  */
-public record Headers(HashMap<String, String> map) { }
+public record Header(HashMap<String, String> map) { }
