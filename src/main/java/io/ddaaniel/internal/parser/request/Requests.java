@@ -26,7 +26,7 @@ public class Requests {
 		return r.State == ParseState.STATE_DONE || r.State == ParseState.STATE_ERROR;
 	}
 
-	public int GetInt(Headers header, String name, int defaultValue) {
+	public int getLength(Headers header, String name, int defaultValue) {
 		var valueStr = header.Get(name);
 		if (valueStr == null) return defaultValue;
 		var value = Integer.parseInt(valueStr);
@@ -108,7 +108,7 @@ public class Requests {
 					break;
 
 				case STATE_BODY:
-					var length = GetInt(r.Headers, "content-length" , 0);
+					var length = getLength(r.Headers, "content-length" , 0);
 					if (length == 0) {
 						r.State = ParseState.STATE_DONE;
 						break;
