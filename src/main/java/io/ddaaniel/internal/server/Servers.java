@@ -7,6 +7,8 @@ import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import io.ddaaniel.internal.parser.response.Responses;
+import io.ddaaniel.internal.parser.response.message.enumns.StatusCode;
 import io.ddaaniel.internal.server.message.Server;
 
 /**
@@ -20,8 +22,10 @@ public class Servers {
 
 	public void runConnection(Server server, WritableByteChannel conn) {
 		try {
-			var out = ByteBuffer.wrap("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World!`".getBytes());
-			conn.write(out);
+			var response = new Responses();
+			var headers = response.GetDefaultHeaders(0);
+			response.WriteStatusLine(conn, response.r.code = StatusCode.STATUS_OK);
+			response.WriteHeaders(conn, headers.h);
 			conn.close();
 		} catch (Exception e) {
 			if (!server.closed) { System.err.println(" -> Error in connection: " + e.getMessage()); }
