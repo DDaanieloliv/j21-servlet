@@ -33,7 +33,7 @@ public class Responses {
 
 	public Headers GetDefaultHeaders(int contetLen) {
 		var h = new Headers();
-		h.Set("Content-Length", String.valueOf(contetLen));
+		h.Replace("Content-Length", String.valueOf(contetLen));
 		h.Set("Connection", "close");
 		h.Set("Content-Type", "text/plain");
 

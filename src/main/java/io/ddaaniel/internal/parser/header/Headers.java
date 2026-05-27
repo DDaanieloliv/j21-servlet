@@ -33,6 +33,11 @@ public class Headers {
 		} else map.put(key, value);
 	}
 
+	public void Replace(String name, String value) {
+		var key = name.toLowerCase();
+		h.map().replace(key, value);
+	}
+
   private boolean isToken(byte[] bytes) {
 		for (byte i : bytes) {
 			var found = false;
