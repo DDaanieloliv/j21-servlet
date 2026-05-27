@@ -29,7 +29,7 @@ public class Main {
 					} 
 
 					else {
-						String successMessage = "Hello World centralizado e roteado pelo Handler!\n";
+						String successMessage = "All good, fr\n";
 						writer.write(successMessage.getBytes());
 						return null;
 					}

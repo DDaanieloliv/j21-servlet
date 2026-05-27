@@ -35,7 +35,7 @@ public class Headers {
 
 	public void Replace(String name, String value) {
 		var key = name.toLowerCase();
-		h.map().replace(key, value);
+		h.map().put(key, value);
 	}
 
   private boolean isToken(byte[] bytes) {

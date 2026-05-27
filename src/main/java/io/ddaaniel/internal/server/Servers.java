@@ -25,7 +25,7 @@ public class Servers {
 	public Server s = new Server();
 
 	public void runConnection(Server server, SocketChannel conn) {
-		try {
+		try (conn) {
 			var response = new Responses();
 			var headers = response.GetDefaultHeaders(0);
 
@@ -40,20 +40,21 @@ public class Servers {
 				}
 			}
 
-			ByteArrayOutputStream writer = new ByteArrayOutputStream();
-			HandlerError handlerError = server.handler.handle(writer, r);
+			var writer = new ByteArrayOutputStream();
+			var handlerError = server.handler.handle(writer, r);
+			var status = StatusCode.STATUS_OK;
+			var body = writer.toByteArray();
+
 			if (handlerError != null) {
-				var errorHeaders = response.GetDefaultHeaders(0); 
-				response.WriteStatusLine(conn, handlerError.code);
-				response.WriteHeaders(conn, errorHeaders.h);
-				conn.write(ByteBuffer.wrap(handlerError.Message.getBytes()));
-				return;
+				status = handlerError.code;
+				body = handlerError.Message.getBytes();
+			} else {
+				body = writer.toByteArray();
 			}
 
-			var body = writer.toByteArray();
 			headers.Replace("Content-Length", String.valueOf(body.length));
 
-			response.WriteStatusLine(conn, response.r.code = StatusCode.STATUS_OK);
+			response.WriteStatusLine(conn, status);
 			response.WriteHeaders(conn, headers.h);
 
 			var bodyBuffer = ByteBuffer.wrap(body);
@@ -61,7 +62,6 @@ public class Servers {
 				conn.write(bodyBuffer);
 			}
 
-			conn.close();
 		} catch (Exception e) {
 			if (!server.closed) { System.err.println(" -> Error in connection: " + e.getMessage()); }
 		}
