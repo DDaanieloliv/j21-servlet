@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.response.message.enumns;
+package io.ddaaniel.internal.parser.response.enums;
 
 
 /**

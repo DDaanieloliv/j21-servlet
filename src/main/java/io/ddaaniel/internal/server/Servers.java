@@ -1,8 +1,6 @@
 package io.ddaaniel.internal.server;
 
-import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
@@ -10,8 +8,8 @@ import java.util.concurrent.Executors;
 
 import io.ddaaniel.internal.parser.request.Requests;
 import io.ddaaniel.internal.parser.request.message.Request;
-import io.ddaaniel.internal.parser.response.Responses;
-import io.ddaaniel.internal.parser.response.message.enumns.StatusCode;
+import io.ddaaniel.internal.parser.response.Response;
+import io.ddaaniel.internal.parser.response.enums.StatusCode;
 import io.ddaaniel.internal.server.message.Server;
 
 
@@ -24,48 +22,28 @@ public class Servers {
 	private ServerSocketChannel listener;
 	public Server s = new Server();
 
-	public void runConnection(Server server, SocketChannel conn) {
-		try (conn) {
-			var response = new Responses();
-			var headers = response.GetDefaultHeaders(0);
+public void runConnection(Server server, SocketChannel conn) {
+    try (conn) {
+        var response = new Response(conn);
+        var headers = response.GetDefaultHeaders(0);
 
-			var r = new Request();
-			try {
-				r = new Requests().RequestFromReader(conn);
-			} catch (Exception err) { 
-				if (err != null) {
-					response.WriteStatusLine(conn, StatusCode.STATUS_BAD_REQUEST);
-					response.WriteHeaders(conn, headers.h);
-					return;
-				}
-			}
+        var r = new Request();
+        try {
+            r = new Requests().RequestFromReader(conn);
+        } catch (Exception err) { 
+            response.WriteStatusLine(StatusCode.STATUS_BAD_REQUEST);
+            response.WriteHeaders(headers.h);
+            return;
+        }
 
-			var writer = new ByteArrayOutputStream();
-			var handlerError = server.handler.handle(writer, r);
-			var status = StatusCode.STATUS_OK;
-			var body = writer.toByteArray();
+        server.handler.handle(response, r);
 
-			if (handlerError != null) {
-				status = handlerError.code;
-				body = handlerError.Message.getBytes();
-			} else {
-				body = writer.toByteArray();
-			}
-
-			headers.Replace("Content-Length", String.valueOf(body.length));
-
-			response.WriteStatusLine(conn, status);
-			response.WriteHeaders(conn, headers.h);
-
-			var bodyBuffer = ByteBuffer.wrap(body);
-			while (bodyBuffer.hasRemaining()) {
-				conn.write(bodyBuffer);
-			}
-
-		} catch (Exception e) {
-			if (!server.closed) { System.err.println(" -> Error in connection: " + e.getMessage()); }
-		}
-	}
+    } catch (Exception e) {
+        if (!server.closed) { 
+            System.err.println(" -> Error in connection: " + e.getMessage()); 
+        }
+    }
+}
 
 	public void runServer(ServerSocketChannel listener) {
 		try {

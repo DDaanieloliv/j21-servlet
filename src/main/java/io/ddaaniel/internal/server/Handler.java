@@ -1,13 +1,13 @@
 package io.ddaaniel.internal.server;
 
-import java.io.OutputStream;
 
 import io.ddaaniel.internal.parser.request.message.Request;
+import io.ddaaniel.internal.parser.response.Response;
 
 
 @FunctionalInterface
 public interface Handler {
-    HandlerError handle(OutputStream writer, Request req);
+    void handle(Response writer, Request req);
 }
 
 
