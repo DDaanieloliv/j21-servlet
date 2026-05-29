@@ -1,4 +1,4 @@
-package io.ddaaniel.headers;
+package io.ddaaniel.request.headers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

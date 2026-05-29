@@ -1,8 +1,15 @@
 package io.ddaaniel;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.concurrent.CountDownLatch;
 
+
 import io.ddaaniel.internal.parser.response.enums.StatusCode;
+import io.ddaaniel.internal.parser.util.Util;
 import io.ddaaniel.internal.server.Servers;
 
 public class Main {
@@ -24,6 +31,52 @@ public class Main {
 				} else if ("/myproblem".equals(req.RequestLine.RequestTarget)) {
 					body = respond500().getBytes();
 					status = StatusCode.STATUS_INTERNAL_SERVER_ERROR;
+				} else if (Util.HasPrefix(req.RequestLine.RequestTarget.getBytes(), "/httpbin/stream".getBytes())) {
+					var target = req.RequestLine.RequestTarget;
+					try (HttpClient client = HttpClient.newHttpClient()) {
+						HttpRequest reqOut = HttpRequest.newBuilder()
+							.uri(URI.create("https://httpbin.org" + target.substring("/httpbin".length())))
+							.GET()
+							.build();
+
+						HttpResponse<InputStream> resOut = client.send(reqOut, HttpResponse.BodyHandlers.ofInputStream());
+
+						w.WriteStatusLine(StatusCode.STATUS_OK);
+
+						headers.Delete("Content-Length");
+						headers.Set("Transfer-Encoding", "chunked");
+						headers.Replace("Content-Type", "text/plain");
+						w.WriteHeaders(headers.h);
+						try (InputStream bodyStream = resOut.body()) {
+							var data = new byte[32];
+							int n;
+
+							while ((n = bodyStream.read(data)) != -1) {
+								if (n == 0) continue;
+
+								String hexSize = Integer.toHexString(n) + "\r\n";
+								w.WriteBody(hexSize.getBytes());
+
+								byte[] chunkData = new byte[n];
+								System.arraycopy(data, 0, chunkData, 0, n);
+								w.WriteBody(chunkData);
+								w.WriteBody("\r\n".getBytes());
+							}
+						}
+
+						w.WriteBody("0\r\n\r\n".getBytes());
+						return;
+
+					} catch (Exception err) {
+						byte[] errBody = respond500().getBytes();
+						headers.Replace("Content-Length", String.valueOf(errBody.length));
+						headers.Replace("Content-Type", "text/html");
+
+						w.WriteStatusLine(StatusCode.STATUS_INTERNAL_SERVER_ERROR);
+						w.WriteHeaders(headers.h);
+						w.WriteBody(errBody);
+						return;
+					}
 				}
 
 				headers.Replace("Content-Length", String.valueOf(body.length));

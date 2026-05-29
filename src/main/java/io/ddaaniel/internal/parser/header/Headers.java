@@ -38,6 +38,11 @@ public class Headers {
 		h.map().put(key, value);
 	}
 
+	public void Delete(String name) {
+		var key = name.toLowerCase();
+		h.map().remove(key);
+	}
+
   private boolean isToken(byte[] bytes) {
 		for (byte i : bytes) {
 			var found = false;

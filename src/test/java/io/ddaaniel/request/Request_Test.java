@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.parser.request.Requests;
-import io.ddaaniel.mocks.ChunkReader;
+import io.ddaaniel.request.mocks.ChunkReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

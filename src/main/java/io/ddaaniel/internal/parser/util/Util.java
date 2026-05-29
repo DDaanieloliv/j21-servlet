@@ -139,7 +139,23 @@ public class Util {
 	}
 
 
+	public static boolean HasPrefix(byte[] arr, byte[] slice) {
+		if (slice.length > arr.length) return false;
+		var match = false;
+		for (int count = 0; count < slice.length; count++) {
+			if (arr[count] == slice[count]) {
+				match = true;
+			} else {
+				match = false;
+				break;
+			} 
+		}
+
+		return match;
+	}
+
 	public static boolean HasSuffix(byte[] arr, byte[] slice) {
+		if (slice.length > arr.length) return false;
 		var match = false;
 		int j = slice.length - 1;
 		int i = arr.length - 1;
