@@ -8,9 +8,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.LinkOption;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
@@ -18,9 +15,9 @@ import java.util.HexFormat;
 import java.util.concurrent.CountDownLatch;
 
 
-import io.ddaaniel.internal.parser.response.enums.StatusCode;
+import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
 import io.ddaaniel.internal.parser.util.Util;
-import io.ddaaniel.internal.server.Servers;
+import io.ddaaniel.listener.Servers;
 
 public class Main {
 	public static void main(String[] args) {
@@ -33,14 +30,14 @@ public class Main {
 				var headers = w.GetDefaultHeaders(0);
 
 				var body = respond200().getBytes();
-				var status = StatusCode.STATUS_OK;
+				var status = ResponseStatusCode.STATUS_OK;
 
 				if ("/yourproblem".equals(req.RequestLine.RequestTarget)) {
 					body = respond400().getBytes();
-					status = StatusCode.STATUS_BAD_REQUEST;
+					status = ResponseStatusCode.STATUS_BAD_REQUEST;
 				} else if ("/myproblem".equals(req.RequestLine.RequestTarget)) {
 					body = respond500().getBytes();
-					status = StatusCode.STATUS_INTERNAL_SERVER_ERROR;
+					status = ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR;
 				} else if (req.RequestLine.RequestTarget.equals("/video")) {
 					try {
 						var videoPath = Path.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/main/java/io/ddaaniel/assets/video.mp4");
@@ -50,7 +47,7 @@ public class Main {
 							headers.Replace("content-length", String.valueOf(fileSize));
 							headers.Delete("transfer-encoding");
 
-							w.WriteStatusLine(StatusCode.STATUS_OK);
+							w.WriteStatusLine(ResponseStatusCode.STATUS_OK);
 							w.WriteHeaders(headers.h);
 
 							var buffer = ByteBuffer.allocate(8192);
@@ -82,7 +79,7 @@ public class Main {
 
 						if (originalContentLength == null || target.contains("/stream")) {
 
-							w.WriteStatusLine(StatusCode.STATUS_OK);
+							w.WriteStatusLine(ResponseStatusCode.STATUS_OK);
 							headers.Delete("Content-Length");
 							headers.Set("Transfer-Encoding", "chunked");
 							headers.Replace("Content-Type", "text/plain");
@@ -123,7 +120,7 @@ public class Main {
 
 						} 
 						else {
-							w.WriteStatusLine(StatusCode.STATUS_OK);
+							w.WriteStatusLine(ResponseStatusCode.STATUS_OK);
 
 							headers.Replace("Content-Length", originalContentLength);
 							var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");
@@ -153,7 +150,7 @@ public class Main {
 						headers.Replace("Content-Length", String.valueOf(errBody.length));
 						headers.Replace("Content-Type", "text/html");
 
-						w.WriteStatusLine(StatusCode.STATUS_INTERNAL_SERVER_ERROR);
+						w.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
 						w.WriteHeaders(headers.h);
 						w.WriteBody(errBody);
 						return;

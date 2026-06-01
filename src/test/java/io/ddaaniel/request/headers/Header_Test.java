@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import org.junit.jupiter.api.Test;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
-import io.ddaaniel.internal.parser.header.Headers;
+import io.ddaaniel.internal.parser.request.header.Headers;
 
 
 /**

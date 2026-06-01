@@ -1,10 +1,10 @@
-package io.ddaaniel.internal.parser.header;
+package io.ddaaniel.internal.parser.request.header;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
-import io.ddaaniel.internal.parser.header.message.Header;
+import io.ddaaniel.internal.parser.request.header.fieldline.Header;
 import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;

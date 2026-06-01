@@ -1,12 +1,12 @@
-package io.ddaaniel.internal.parser.response;
+package io.ddaaniel.internal.parser.request.response;
 
 
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
-import io.ddaaniel.internal.parser.header.Headers;
-import io.ddaaniel.internal.parser.header.message.Header;
-import io.ddaaniel.internal.parser.response.enums.StatusCode;
+import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.header.fieldline.Header;
+import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
 
 public class Response {
     private final WritableByteChannel writer;
@@ -25,7 +25,7 @@ public class Response {
         return h;
     }
 
-    public int WriteStatusLine(StatusCode statuscode) {
+    public int WriteStatusLine(ResponseStatusCode statuscode) {
         try {
             String statusStr;
             switch (statuscode) {

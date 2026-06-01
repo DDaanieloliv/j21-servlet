@@ -1,9 +1,9 @@
-package io.ddaaniel.internal.parser.request.message.enums;
+package io.ddaaniel.internal.parser.request.mapper.state;
 
 /**
  * ParseState
  */
-public enum ParseState {
+public enum ParsingState {
 	STATE_INIT,
 	STATE_HEADERS,
 	STATE_BODY,

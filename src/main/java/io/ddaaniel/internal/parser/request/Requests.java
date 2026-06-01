@@ -7,13 +7,13 @@ import java.nio.charset.StandardCharsets;
 import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
-import io.ddaaniel.internal.parser.header.Headers;
-import io.ddaaniel.internal.parser.request.message.Request;
-import io.ddaaniel.internal.parser.request.message.RequestLine;
-import io.ddaaniel.internal.parser.request.message.enums.ParseState;
+import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.mapper.Request;
+import io.ddaaniel.internal.parser.request.mapper.RequestLine;
+import io.ddaaniel.internal.parser.request.mapper.state.ParsingState;
 import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
-	import io.vavr.Tuple2;
+import io.vavr.Tuple2;
 
 /**
  * Requests
@@ -23,7 +23,7 @@ public class Requests {
 	public final Request r = new Request();
 
 	private boolean done() {
-		return r.State == ParseState.STATE_DONE || r.State == ParseState.STATE_ERROR;
+		return r.State == ParsingState.STATE_DONE || r.State == ParsingState.STATE_ERROR;
 	}
 
 	public int getLength(Headers header, String name, int defaultValue) {
@@ -34,8 +34,8 @@ public class Requests {
 	}
 
 	private Request NewRequest(Request r) {
-		r.State = ParseState.STATE_INIT;
-		r.Headers = new Headers();
+		r.State = ParsingState.STATE_INIT;
+		r.Headers= new Headers();
 		r.Body = "";
 		return r;
 	}
@@ -95,7 +95,7 @@ public class Requests {
 					}
 					r.RequestLine = requestLine;
 					read += totalReadR;
-					r.State = ParseState.STATE_HEADERS;
+					r.State = ParsingState.STATE_HEADERS;
 					break;
 
 				case STATE_HEADERS:
@@ -104,13 +104,13 @@ public class Requests {
 					var done = parsedHeader._2; 
 					if (totalReadH == 0) break outer;
 					read += totalReadH;
-					if (done) r.State = ParseState.STATE_BODY;
+					if (done) r.State = ParsingState.STATE_BODY;
 					break;
 
 				case STATE_BODY:
 					var length = getLength(r.Headers, "content-length" , 0);
 					if (length == 0) {
-						r.State = ParseState.STATE_DONE;
+						r.State = ParsingState.STATE_DONE;
 						break;
 					}
 					var stillMissing = length - r.Body.getBytes().length;
@@ -123,7 +123,7 @@ public class Requests {
 						read += remaining;
 					}
 					if (length == r.Body.length()) {
-						r.State = ParseState.STATE_DONE;
+						r.State = ParsingState.STATE_DONE;
 					} else break outer;
 					break;
 				default: 
@@ -143,8 +143,8 @@ public class Requests {
 			while (!done()) {
 				var read = reader.read(buf);
 				if (read == -1) {
-					if (request.State != ParseState.STATE_DONE) {
-						request.State = ParseState.STATE_ERROR; 
+					if (request.State != ParsingState.STATE_DONE) {
+						request.State = ParsingState.STATE_ERROR; 
 						throw new MalformedBodyException(" -> body shorter than reported content-length ");
 					}
 					break;
@@ -154,7 +154,7 @@ public class Requests {
 				parse(buf);
 
 				if (buf.remaining() == buf.capacity()) {
-					request.State = ParseState.STATE_ERROR;
+					request.State = ParsingState.STATE_ERROR;
 					throw new URITooLongException(" -> uri too long, error 414 -- bytes-read: " + read);
 				}
 				buf.compact();

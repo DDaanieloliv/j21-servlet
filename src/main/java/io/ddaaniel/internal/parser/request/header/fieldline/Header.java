@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.header.message;
+package io.ddaaniel.internal.parser.request.header.fieldline;
 
 import java.util.HashMap;
 

@@ -1,17 +1,17 @@
-package io.ddaaniel.internal.parser.response.enums;
+package io.ddaaniel.internal.parser.request.response.status;
 
 
 /**
- * StatusCode
+ * ResponseStatusCode
  */
-public enum StatusCode {
+public enum ResponseStatusCode {
 	STATUS_OK(200),
 	STATUS_BAD_REQUEST(400),
 	STATUS_INTERNAL_SERVER_ERROR(500);
 
 	private int code;
 
-	StatusCode(int code) {
+	ResponseStatusCode(int code) {
 		this.code = code;
 	}
 

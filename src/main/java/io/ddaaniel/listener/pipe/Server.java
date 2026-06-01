@@ -1,6 +1,5 @@
-package io.ddaaniel.internal.server.message;
+package io.ddaaniel.listener.pipe;
 
-import io.ddaaniel.internal.server.Handler;
 
 /**
  * Server
