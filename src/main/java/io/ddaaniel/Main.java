@@ -26,6 +26,8 @@ public class Main {
 		var keepAliveLatch = new CountDownLatch(1);
 
 		try {
+			/// var s = new Servers().handleConnection(port);
+
 			var s = new Servers().Serve(port, (w, req) -> {
 				var headers = w.GetDefaultHeaders(0);
 
@@ -166,15 +168,14 @@ public class Main {
 			});
 
 			System.out.println(" -> Server started with Handler on port 42069 ");
-
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				System.out.println("\n -> Signal received! Initiating graceful shutdown...");
 				s.Close();
 				keepAliveLatch.countDown(); 
 			}));
-
 			keepAliveLatch.await();
 			System.out.println(" -> Server gracefully stopped");
+
 		} catch (Exception e) { 
 			System.err.println(" -> Error starting server: " + e.getMessage()); 
 			System.exit(1);	
