@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.pipe.sample;
+package io.ddaaniel.listener.pipe.http_sample;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;

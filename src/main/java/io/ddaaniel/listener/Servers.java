@@ -17,7 +17,7 @@ import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
 import io.ddaaniel.internal.parser.util.Util;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
-import io.ddaaniel.listener.pipe.sample.HttpBin;
+import io.ddaaniel.listener.pipe.http_sample.HttpBin;
 
 
 /**
