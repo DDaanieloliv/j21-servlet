@@ -1,20 +1,12 @@
 package io.ddaaniel.listener;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -25,6 +17,7 @@ import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
 import io.ddaaniel.internal.parser.util.Util;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
+import io.ddaaniel.listener.pipe.sample.HttpBin;
 
 
 /**
@@ -78,89 +71,13 @@ public class Servers {
 					System.err.println(" -> Error when streaming .mp4 file: " + err.getMessage());
 				}
 			} else if (Util.HasPrefix(req.RequestLine.RequestTarget.getBytes(), "/httpbin/".getBytes())) {
-				var target = req.RequestLine.RequestTarget;
-				try (HttpClient client = HttpClient.newHttpClient()) {
-					var reqOut = HttpRequest.newBuilder()
-						.uri(URI.create("https://httpbin.org" + target.substring("/httpbin".length())))
-						.GET()
-						.build();
-					var resOut = client.send(reqOut, HttpResponse.BodyHandlers.ofInputStream());
-
-					var originalContentLength = resOut.headers().firstValue("Content-Length").orElse(null);
-
-					if (originalContentLength == null || target.contains("/stream")) {
-
-						res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
-						headers.Delete("Content-Length");
-						headers.Set("Transfer-Encoding", "chunked");
-						headers.Replace("Content-Type", "text/plain");
-						headers.Set("Trailer", "X-Content-SHA256, X-Content-Length");
-						res.WriteHeaders(headers.h);
-
-						var fullBody = new ByteArrayOutputStream();
-						try (InputStream bodyStream = resOut.body()) {
-							int n;
-							var data = new byte[32];
-							while ((n = bodyStream.read(data)) != -1) {
-								if (n == 0) continue;
-								fullBody.write(data, 0, n);
-
-								var hexSize = Integer.toHexString(n) + "\r\n";
-								res.WriteBody(hexSize.getBytes());
-
-								var chunkData = new byte[n];
-								System.arraycopy(data, 0, chunkData, 0, n);
-								res.WriteBody(chunkData);
-								res.WriteBody("\r\n".getBytes());
-							}
-						}
-
-						res.WriteBody("0\r\n".getBytes()); 
-
-						var finalPayload = fullBody.toByteArray();
-						var digest = MessageDigest.getInstance("SHA-256");
-						var sha256bytes = digest.digest(finalPayload);
-						var sha256Hex = HexFormat.of().formatHex(sha256bytes);
-
-						String trailersBlock = "X-Content-SHA256: " + sha256Hex + "\r\n" +
-							"X-Content-Length: " + finalPayload.length + "\r\n" +
-							"\r\n";
-
-						res.WriteBody(trailersBlock.getBytes());
-						return;
-
-					} 
-					else {
-						res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
-
-						headers.Replace("Content-Length", originalContentLength);
-						var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");
-						headers.Replace("Content-Type", originalContentType);
-
-						headers.Delete("Transfer-Encoding");
-						headers.Delete("Trailer");
-
-						res.WriteHeaders(headers.h);
-
-						try (InputStream bodyStream = resOut.body()) {
-							int n;
-							var buffer = new byte[1024];
-							while ((n = bodyStream.read(buffer)) != -1) {
-								if (n == 0) continue;
-
-								byte[] rawData = new byte[n];
-								System.arraycopy(buffer, 0, rawData, 0, n);
-								res.WriteBody(rawData);
-							}
-						}
-						return;
-					}
-
+				try {
+					HttpBin.HttpStreamRes(req, headers, res);
+					return;
 				} catch (Exception err) {
 					var errBody = respond500().getBytes();
 					headers.Replace("Content-Length", String.valueOf(errBody.length));
 					headers.Replace("Content-Type", "text/html");
-
 					res.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
 					res.WriteHeaders(headers.h);
 					res.WriteBody(errBody);
@@ -170,7 +87,6 @@ public class Servers {
 
 			headers.Replace("Content-Length", String.valueOf(body.length));
 			headers.Replace("Content-Type", "text/html");
-
 			res.WriteStatusLine(status);
 			res.WriteHeaders(headers.h);
 			res.WriteBody(body);
