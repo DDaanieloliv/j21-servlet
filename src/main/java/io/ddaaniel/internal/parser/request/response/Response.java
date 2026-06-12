@@ -15,7 +15,7 @@ public class Response {
         this.writer = writer;
     }
 
-    public Headers GetDefaultHeaders(int contentLen) {
+    public Headers DefaultHeaders(int contentLen) {
         var h = new Headers();
         
         h.Replace("Content-Length", String.valueOf(contentLen));

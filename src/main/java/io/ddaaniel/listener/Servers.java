@@ -14,7 +14,6 @@ import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
-import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,8 +23,8 @@ import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
 import io.ddaaniel.internal.parser.util.Util;
+import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
-import io.ddaaniel.listener.pipe.Server;
 
 
 /**
@@ -38,9 +37,9 @@ public class Servers {
 	public Server s = new Server();
 
 	public Servers handleConnection(int port) throws Exception {
-		var s = new Servers().Serve(port, (w, req) -> {
-			var headers = w.GetDefaultHeaders(0);
+		var s = new Servers().Serve(port, (req, res) -> {
 
+			var headers = res.DefaultHeaders(0);
 			var body = respond200().getBytes();
 			var status = ResponseStatusCode.STATUS_OK;
 
@@ -59,8 +58,8 @@ public class Servers {
 						headers.Replace("content-length", String.valueOf(fileSize));
 						headers.Delete("transfer-encoding");
 
-						w.WriteStatusLine(ResponseStatusCode.STATUS_OK);
-						w.WriteHeaders(headers.h);
+						res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
+						res.WriteHeaders(headers.h);
 
 						var buffer = ByteBuffer.allocate(8192);
 						while (fileChannel.read(buffer) > 0) {
@@ -69,7 +68,7 @@ public class Servers {
 							var rawBytes = new byte[buffer.remaining()];
 							buffer.get(rawBytes);
 
-							w.WriteBody(rawBytes);
+							res.WriteBody(rawBytes);
 
 							buffer.clear();
 						}
@@ -91,12 +90,12 @@ public class Servers {
 
 					if (originalContentLength == null || target.contains("/stream")) {
 
-						w.WriteStatusLine(ResponseStatusCode.STATUS_OK);
+						res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
 						headers.Delete("Content-Length");
 						headers.Set("Transfer-Encoding", "chunked");
 						headers.Replace("Content-Type", "text/plain");
 						headers.Set("Trailer", "X-Content-SHA256, X-Content-Length");
-						w.WriteHeaders(headers.h);
+						res.WriteHeaders(headers.h);
 
 						var fullBody = new ByteArrayOutputStream();
 						try (InputStream bodyStream = resOut.body()) {
@@ -107,16 +106,16 @@ public class Servers {
 								fullBody.write(data, 0, n);
 
 								var hexSize = Integer.toHexString(n) + "\r\n";
-								w.WriteBody(hexSize.getBytes());
+								res.WriteBody(hexSize.getBytes());
 
 								var chunkData = new byte[n];
 								System.arraycopy(data, 0, chunkData, 0, n);
-								w.WriteBody(chunkData);
-								w.WriteBody("\r\n".getBytes());
+								res.WriteBody(chunkData);
+								res.WriteBody("\r\n".getBytes());
 							}
 						}
 
-						w.WriteBody("0\r\n".getBytes()); 
+						res.WriteBody("0\r\n".getBytes()); 
 
 						var finalPayload = fullBody.toByteArray();
 						var digest = MessageDigest.getInstance("SHA-256");
@@ -127,12 +126,12 @@ public class Servers {
 							"X-Content-Length: " + finalPayload.length + "\r\n" +
 							"\r\n";
 
-						w.WriteBody(trailersBlock.getBytes());
+						res.WriteBody(trailersBlock.getBytes());
 						return;
 
 					} 
 					else {
-						w.WriteStatusLine(ResponseStatusCode.STATUS_OK);
+						res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
 
 						headers.Replace("Content-Length", originalContentLength);
 						var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");
@@ -141,7 +140,7 @@ public class Servers {
 						headers.Delete("Transfer-Encoding");
 						headers.Delete("Trailer");
 
-						w.WriteHeaders(headers.h);
+						res.WriteHeaders(headers.h);
 
 						try (InputStream bodyStream = resOut.body()) {
 							int n;
@@ -151,7 +150,7 @@ public class Servers {
 
 								byte[] rawData = new byte[n];
 								System.arraycopy(buffer, 0, rawData, 0, n);
-								w.WriteBody(rawData);
+								res.WriteBody(rawData);
 							}
 						}
 						return;
@@ -162,9 +161,9 @@ public class Servers {
 					headers.Replace("Content-Length", String.valueOf(errBody.length));
 					headers.Replace("Content-Type", "text/html");
 
-					w.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
-					w.WriteHeaders(headers.h);
-					w.WriteBody(errBody);
+					res.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
+					res.WriteHeaders(headers.h);
+					res.WriteBody(errBody);
 					return;
 				}
 			}
@@ -172,46 +171,19 @@ public class Servers {
 			headers.Replace("Content-Length", String.valueOf(body.length));
 			headers.Replace("Content-Type", "text/html");
 
-			w.WriteStatusLine(status);
-			w.WriteHeaders(headers.h);
-			w.WriteBody(body);
+			res.WriteStatusLine(status);
+			res.WriteHeaders(headers.h);
+			res.WriteBody(body);
 		});
 
 		return s;
 	}
 
 
-	public static void handleConnection() {
-		try {
-
-			var server = ServerSocketChannel.open();
-			server.bind(new InetSocketAddress(42069));
-			var request = new Request();
-			var headers = new HashMap<String, String>();
-
-			while (true) {
-				var socket = server.accept();
-				request = new Requests().RequestFromReader(socket);
-				headers = request.Headers.h.map();
-				break;
-			}
-
-			System.out.println("Request Line:");
-			System.out.println(" - Method: " + request.RequestLine.Method); 
-			System.out.println(" - Target: " + request.RequestLine.RequestTarget);
-			System.out.println(" - Version: " + request.RequestLine.HttpVersion);
-			System.out.println("Headers:");
-			headers.forEach((key, value) -> System.out.println(" - " + key + ": " + value));
-			System.out.println("Body:");
-			System.out.println(" - " + request.Body + "\n");
-
-		} catch (Exception e) { e.printStackTrace(); }
-	}
-
 	public void runConnection(Server server, SocketChannel conn) {
 		try (conn) {
 			var response = new Response(conn);
-			var headers = response.GetDefaultHeaders(0);
+			var headers = response.DefaultHeaders(0);
 
 			var r = new Request();
 			try {
@@ -222,7 +194,7 @@ public class Servers {
 				return;
 			}
 
-			server.handler.handle(response, r);
+			server.handler.handle(r, response);
 
 		} catch (Exception e) {
 			if (!server.closed) { 

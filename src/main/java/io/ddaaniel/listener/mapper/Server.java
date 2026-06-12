@@ -1,5 +1,6 @@
-package io.ddaaniel.listener.pipe;
+package io.ddaaniel.listener.mapper;
 
+import io.ddaaniel.listener.pipe.Handler;
 
 /**
  * Server
