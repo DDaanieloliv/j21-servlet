@@ -18,6 +18,7 @@ import io.ddaaniel.internal.parser.util.Util;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
 import io.ddaaniel.listener.pipe.http_sample.HttpBin;
+import io.ddaaniel.listener.pipe.routing.Router;
 
 
 /**
@@ -31,67 +32,9 @@ public class Servers {
 
 	public Servers handleConnection(int port) throws Exception {
 		var s = new Servers().Serve(port, (req, res) -> {
-
-			var headers = res.DefaultHeaders(0);
-			var body = respond200().getBytes();
-			var status = ResponseStatusCode.STATUS_OK;
-
-			if ("/yourproblem".equals(req.RequestLine.RequestTarget)) {
-				body = respond400().getBytes();
-				status = ResponseStatusCode.STATUS_BAD_REQUEST;
-			} else if ("/myproblem".equals(req.RequestLine.RequestTarget)) {
-				body = respond500().getBytes();
-				status = ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR;
-			} else if (req.RequestLine.RequestTarget.equals("/video")) {
-				try {
-					var videoPath = Path.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/main/java/io/ddaaniel/assets/video.mp4");
-					try (FileChannel fileChannel = FileChannel.open(videoPath, StandardOpenOption.READ)) {
-						long fileSize = fileChannel.size();
-						headers.Replace("content-type", "video/mp4");
-						headers.Replace("content-length", String.valueOf(fileSize));
-						headers.Delete("transfer-encoding");
-
-						res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
-						res.WriteHeaders(headers.h);
-
-						var buffer = ByteBuffer.allocate(8192);
-						while (fileChannel.read(buffer) > 0) {
-							buffer.flip();
-
-							var rawBytes = new byte[buffer.remaining()];
-							buffer.get(rawBytes);
-
-							res.WriteBody(rawBytes);
-
-							buffer.clear();
-						}
-					}
-
-				} catch (Exception err) {
-					System.err.println(" -> Error when streaming .mp4 file: " + err.getMessage());
-				}
-			} else if (Util.HasPrefix(req.RequestLine.RequestTarget.getBytes(), "/httpbin/".getBytes())) {
-				try {
-					HttpBin.HttpStreamRes(req, headers, res);
-					return;
-				} catch (Exception err) {
-					var errBody = respond500().getBytes();
-					headers.Replace("Content-Length", String.valueOf(errBody.length));
-					headers.Replace("Content-Type", "text/html");
-					res.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
-					res.WriteHeaders(headers.h);
-					res.WriteBody(errBody);
-					return;
-				}
-			}
-
-			headers.Replace("Content-Length", String.valueOf(body.length));
-			headers.Replace("Content-Type", "text/html");
-			res.WriteStatusLine(status);
-			res.WriteHeaders(headers.h);
-			res.WriteBody(body);
+			Router.route(req, res);
+			return;
 		});
-
 		return s;
 	}
 
