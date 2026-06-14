@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.pipe.http_sample;
+package io.ddaaniel.listener.pipe.routing.handlers;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -17,7 +17,7 @@ import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
 /**
  * HttpBin
  */
-public abstract class HttpBin {
+public abstract class HttpBinHandler {
 
 	public static void HttpStreamRes(Request req, Headers headers, Response res) throws Exception {
 		var target = req.RequestLine.RequestTarget;

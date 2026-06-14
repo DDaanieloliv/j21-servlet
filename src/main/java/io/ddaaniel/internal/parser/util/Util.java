@@ -138,6 +138,21 @@ public class Util {
 		return Arrays.copyOfRange(array, offsetLeft, offsetRight + 1);
 	}
 
+	public static String HasPrefix(String arr, String slice) {
+		if (slice.length() > arr.length()) return "";
+		var match = false;
+		for (int count = 0; count < slice.length(); count++) {
+			if (arr.indexOf(count) == slice.indexOf(count)) {
+				match = true;
+			} else {
+				match = false;
+				break;
+			} 
+		}
+
+		if (match) return slice;
+		return "";
+	}
 
 	public static boolean HasPrefix(byte[] arr, byte[] slice) {
 		if (slice.length > arr.length) return false;

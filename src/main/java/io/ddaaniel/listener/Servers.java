@@ -1,12 +1,8 @@
 package io.ddaaniel.listener;
 
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -14,10 +10,8 @@ import io.ddaaniel.internal.parser.request.Requests;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
-import io.ddaaniel.internal.parser.util.Util;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
-import io.ddaaniel.listener.pipe.http_sample.HttpBin;
 import io.ddaaniel.listener.pipe.routing.Router;
 
 
@@ -99,48 +93,4 @@ public class Servers {
 			System.err.println(" -> Error when closing server: " + e.getMessage());
 		}
 	}
-
-
-	private static String respond200() {
-		return 
-			"<html>" +
-			"<head>" +
-			"<title>200 OK</title>" +
-			"</head>" +
-			"<body>" +
-			"<h1>Success!</h1>" +
-			"<p>Your request was an absolute banger.</p>" +
-			"</body>" +
-			"</html>" + 
-			"\n";
-	}
-
-	private static String respond400() {
-		return 
-			"<html>" +
-			"<head>" +
-			"<title>400 Bad Request</title>" +
-			"</head>" +
-			"<body>" +
-			"<h1>Bad Request</h1>" +
-			"<p>Your request honestly kinda sucked.</p>" +
-			"</body>" +
-			"</html>" +
-			"\n";
-	}
-
-	private static String respond500() {
-		return 
-			"<html>" +
-			"<head>" +
-			"<title>500 Internal Server Error</title>" +
-			"</head>" +
-			"<body>" +
-			"<h1>Internal Server Error</h1>" +
-			"<p>Okay, you know what? This one is on me.</p>" +
-			"</body>" +
-			"</html>" + 
-			"\n";
-	}
-
 }
