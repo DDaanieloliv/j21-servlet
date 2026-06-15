@@ -33,6 +33,21 @@ public abstract class HttpMsg {
 			"\n";
 	}
 
+	public static String respond404() {
+		return 
+			"<html>" +
+			"<head>" +
+			"<title>404 Not Found</title>" +
+			"</head>" +
+			"<body>" +
+			"<h1>Not Found</h1>" +
+			"<p>What are u doing brotherrr, that is no here.</p>" +
+			"</body>" +
+			"</html>" +
+			"\n";
+	}
+
+
 	public static String respond500() {
 		return 
 			"<html>" +
