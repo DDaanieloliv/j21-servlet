@@ -25,8 +25,17 @@ public class Servers {
 	public Server s = new Server();
 
 	public Servers handleConnection(int port) throws Exception {
+		// java.lang.reflect.Method routeMethod = Class.forName("io.ddaaniel.generated.GeneratedRouter")
+		// 	.getMethod("route", Request.class, Response.class);
 		var s = new Servers().Serve(port, (req, res) -> {
-			Router.route(req, res);
+			// Router.route(req, res);
+			io.ddaaniel.generated.GeneratedRouter.route(req, res);
+
+			// try {
+			// 	routeMethod.invoke(null, req, res);
+			// } catch (Exception e) {
+			// 	System.err.println(" -> Reflection Router Error: " + e.getMessage());
+			// }
 			return;
 		});
 		return s;
