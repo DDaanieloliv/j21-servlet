@@ -31,6 +31,7 @@ public class Response {
             switch (statuscode) {
                 case STATUS_OK: statusStr = "HTTP/1.1 200 OK\r\n"; break;
                 case STATUS_BAD_REQUEST: statusStr = "HTTP/1.1 400 Bad Request\r\n"; break;
+				case STATUS_NOT_FOUND: statusStr = "HTTP/1.1 404 Not Found\r\n"; break;
                 case STATUS_INTERNAL_SERVER_ERROR: statusStr = "HTTP/1.1 500 Internal Server Error\r\n"; break;
                 default: throw new IllegalArgumentException("Unrecognized code: " + statuscode);
             }

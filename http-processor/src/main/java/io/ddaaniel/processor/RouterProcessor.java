@@ -28,6 +28,7 @@ public class RouterProcessor extends AbstractProcessor {
 			JavaFileObject builderFile = processingEnv.getFiler().createSourceFile("io.ddaaniel.generated.GeneratedRouter");
 			try (Writer writer = builderFile.openWriter()) {
 				writer.write("package io.ddaaniel.generated;\n\n");
+				writer.write("import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;\n");
 				writer.write("import io.ddaaniel.internal.parser.request.mapper.Request;\n");
 				writer.write("import io.ddaaniel.internal.parser.request.response.Response;\n");
 				writer.write("import io.ddaaniel.internal.parser.request.header.Headers;\n\n");
@@ -52,13 +53,14 @@ public class RouterProcessor extends AbstractProcessor {
 				}
 
 				writer.write("                default -> {\n");
-				writer.write("                    res.WriteStatusLine(io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode.STATUS_NOT_FOUND);\n");
+				writer.write("                    res.WriteStatusLine(ResponseStatusCode.STATUS_NOT_FOUND);\n");
 				writer.write("                    res.WriteHeaders(res.DefaultHeaders(0).h);\n");
 				writer.write("                    res.WriteBody(\"<html><h1>404 Not Found</h1></html>\\n\".getBytes());\n");
 				writer.write("                }\n");
 				writer.write("            }\n");
 				writer.write("        } catch (Exception e) {\n");
-				writer.write("            System.err.println(\" -> Router Error: \" + e.getMessage());\n");
+				writer.write("            System.err.println(\" -> Router Error: \");\n");
+				writer.write("            e.printStackTrace();\n");
 				writer.write("        }\n");
 				writer.write("    }\n");
 				writer.write("}\n");

@@ -4,6 +4,7 @@ import io.ddaaniel.annotations.GET;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
+import io.ddaaniel.internal.parser.request.response.util.HttpMsg;
 
 public class VideoController {
 
@@ -13,6 +14,6 @@ public class VideoController {
 
 		res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
 		res.WriteHeaders(res.DefaultHeaders(0).h);
-		res.WriteBody("<html><body><h1>Video Streaming given by Controller!</h1></body></html>\n".getBytes());
+		res.WriteBody(HttpMsg.respond404().getBytes());
 	}
 }
