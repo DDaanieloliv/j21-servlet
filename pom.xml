@@ -11,7 +11,7 @@
 
     <modules>
         <module>http-processor</module>
-        <module>http-server</module>
+        <module>http</module>
     </modules>
 
     <properties>
