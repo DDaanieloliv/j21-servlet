@@ -10,6 +10,9 @@ import io.ddaaniel.internal.parser.request.Requests;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
+import io.ddaaniel.internal.parser.request.response.util.HttpMsg;
+import io.ddaaniel.internal.routing.ReflectionRouter;
+import io.ddaaniel.internal.routing.response.ResponseEntity;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
 
@@ -24,16 +27,30 @@ public class Servers {
 	public Server s = new Server();
 
 	public Servers handleConnection(int port) throws Exception {
-		// Method routeMethod = 
-		// Class.forName("io.ddaaniel.generated.GeneratedRouter")
-		// 	.getMethod("route", Request.class, Response.class);
+		var reflectionRouter = new ReflectionRouter();
 		var s = new Servers().Serve(port, (req, res) -> {
 			try {
-				io.ddaaniel.generated.GeneratedRouter.route(req, res); 
-				// routeMethod.invoke(null, req, res);
-				// Router.route(req, res);
+				String target = req.RequestLine.RequestTarget;
+				ResponseEntity<?> response = reflectionRouter.dispatch(target);
+
+				if (response != null) {
+					res.WriteStatusLine(response.getStatus());
+					String body = response.getBody() != null ? response.getBody().toString() : "";
+					var headersMap = res.DefaultHeaders(body.length()).h;
+					if (response.getHeaders() != null)  headersMap.map().putAll(response.getHeaders());
+					res.WriteHeaders(headersMap);
+					res.WriteBody(body.getBytes());
+				} else {
+					res.WriteStatusLine(ResponseStatusCode.STATUS_NOT_FOUND);
+					res.WriteHeaders(res.DefaultHeaders(0).h);
+					res.WriteBody(HttpMsg.respond404().getBytes());
+				}
 			} catch (Exception e) {
 				System.err.println(" -> Reflection Router Error: " + e.getMessage());
+				try {
+					res.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
+					res.WriteHeaders(res.DefaultHeaders(0).h);
+				} catch (Exception ignored) {}
 			}
 
 			return;
