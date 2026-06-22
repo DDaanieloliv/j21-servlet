@@ -37,6 +37,10 @@ public class HttpEntity<T> {
 		return this.body;
 	}
 
+	public boolean hasBody() {
+		return this.body != null;
+	}
+
 	public HttpHeaders getHeaders() {
 		return this.headers;
 	}

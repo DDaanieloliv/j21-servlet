@@ -1,5 +1,6 @@
 package io.ddaaniel.internal.httpEntity.entities.httpHeaders;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -72,10 +73,16 @@ public class HttpHeaders {
 	public static final String WWW_AUTHENTICATE = "WWW_AUTHENTICATE";
 
 
-	private final Map<String, String> map;
+	private final Map<String, ArrayList<String>> map;
 
-	public HttpHeaders(Map<String, String> map){
+	public HttpHeaders(Map<String, ArrayList<String>> map){
 		this.map = map;
 	} 
+
+	public HttpHeaders(){
+		this.map = new LinkedHashMap<String, ArrayList<String>>();
+	} 
+
+	// public HttpHeaders(HttpHeaders map){ } 
 
 }
