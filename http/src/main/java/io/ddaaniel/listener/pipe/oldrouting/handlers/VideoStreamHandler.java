@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.pipe.routing.handlers;
+package io.ddaaniel.listener.pipe.oldrouting.handlers;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -8,7 +8,7 @@ import java.nio.file.StandardOpenOption;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
+import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
 
 /**
  * VideoStreamHandler
@@ -24,7 +24,7 @@ public abstract class VideoStreamHandler {
 			headers.Replace("content-length", String.valueOf(fileSize));
 			headers.Delete("transfer-encoding");
 
-			res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
+			res.WriteStatusLine(HttpStatus.STATUS_OK);
 			res.WriteHeaders(headers.h);
 
 			var buffer = ByteBuffer.allocate(8192);

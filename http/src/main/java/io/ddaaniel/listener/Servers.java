@@ -9,12 +9,12 @@ import java.util.concurrent.Executors;
 import io.ddaaniel.internal.parser.request.Requests;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
-import io.ddaaniel.internal.parser.request.response.util.HttpMsg;
-import io.ddaaniel.internal.routing.ReflectionRouter;
-import io.ddaaniel.internal.routing.response.ResponseEntity;
+import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
+import io.ddaaniel.internal.parser.request.response.status.util.FunHttp;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
+import io.ddaaniel.listener.pipe.routing.RefRouter;
+import io.ddaaniel.listener.pipe.routing.response.ResponseEntity;
 
 
 /**
@@ -27,28 +27,28 @@ public class Servers {
 	public Server s = new Server();
 
 	public Servers handleConnection(int port) throws Exception {
-		var reflectionRouter = new ReflectionRouter();
+		var referenceRouter = new RefRouter();
 		var s = new Servers().Serve(port, (req, res) -> {
 			try {
 				String target = req.RequestLine.RequestTarget;
-				ResponseEntity<?> response = reflectionRouter.dispatch(target);
+				ResponseEntity<?> response = referenceRouter.dispatch(target);
 
 				if (response != null) {
-					res.WriteStatusLine(response.getStatus());
 					String body = response.getBody() != null ? response.getBody().toString() : "";
 					var headersMap = res.DefaultHeaders(body.length()).h;
+					res.WriteStatusLine(response.getStatus());
 					if (response.getHeaders() != null)  headersMap.map().putAll(response.getHeaders());
 					res.WriteHeaders(headersMap);
 					res.WriteBody(body.getBytes());
 				} else {
-					res.WriteStatusLine(ResponseStatusCode.STATUS_NOT_FOUND);
+					res.WriteStatusLine(HttpStatus.STATUS_NOT_FOUND);
 					res.WriteHeaders(res.DefaultHeaders(0).h);
-					res.WriteBody(HttpMsg.respond404().getBytes());
+					res.WriteBody(FunHttp.respond404().getBytes());
 				}
 			} catch (Exception e) {
 				System.err.println(" -> Reflection Router Error: " + e.getMessage());
 				try {
-					res.WriteStatusLine(ResponseStatusCode.STATUS_INTERNAL_SERVER_ERROR);
+					res.WriteStatusLine(HttpStatus.STATUS_INTERNAL_SERVER_ERROR);
 					res.WriteHeaders(res.DefaultHeaders(0).h);
 				} catch (Exception ignored) {}
 			}
@@ -68,7 +68,7 @@ public class Servers {
 			try {
 				r = new Requests().RequestFromReader(conn);
 			} catch (Exception err) { 
-				response.WriteStatusLine(ResponseStatusCode.STATUS_BAD_REQUEST);
+				response.WriteStatusLine(HttpStatus.STATUS_BAD_REQUEST);
 				response.WriteHeaders(headers.h);
 				return;
 			}

@@ -1,9 +1,9 @@
-package io.ddaaniel.internal.parser.request.response.util;
+package io.ddaaniel.internal.parser.request.response.status.util;
 
 /**
- * HttpMsg
+ * FunHttp
  */
-public abstract class HttpMsg {
+public abstract class FunHttp {
 
 	public static String respond200() {
 		return 

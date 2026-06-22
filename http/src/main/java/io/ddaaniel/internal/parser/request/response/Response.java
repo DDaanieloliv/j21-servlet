@@ -6,7 +6,7 @@ import java.nio.channels.WritableByteChannel;
 
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.header.fieldline.Header;
-import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
+import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
 
 public class Response {
     private final WritableByteChannel writer;
@@ -25,7 +25,7 @@ public class Response {
         return h;
     }
 
-    public int WriteStatusLine(ResponseStatusCode statuscode) {
+    public int WriteStatusLine(HttpStatus statuscode) {
         try {
             String statusStr;
             switch (statuscode) {

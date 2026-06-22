@@ -2,9 +2,9 @@ package io.ddaaniel.internal.parser.request.response.status;
 
 
 /**
- * ResponseStatusCode
+ * HttpStatus
  */
-public enum ResponseStatusCode {
+public enum HttpStatus {
 	STATUS_OK(200),
 	STATUS_BAD_REQUEST(400),
 	STATUS_NOT_FOUND(404),
@@ -12,7 +12,7 @@ public enum ResponseStatusCode {
 
 	private int code;
 
-	ResponseStatusCode(int code) {
+	HttpStatus(int code) {
 		this.code = code;
 	}
 

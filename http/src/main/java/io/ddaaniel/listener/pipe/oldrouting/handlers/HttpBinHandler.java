@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.pipe.routing.handlers;
+package io.ddaaniel.listener.pipe.oldrouting.handlers;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -12,7 +12,7 @@ import java.util.HexFormat;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.ResponseStatusCode;
+import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
 
 /**
  * HttpBin
@@ -32,7 +32,7 @@ public abstract class HttpBinHandler {
 
 		if (originalContentLength == null || target.contains("/stream")) {
 
-			res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
+			res.WriteStatusLine(HttpStatus.STATUS_OK);
 			headers.Delete("Content-Length");
 			headers.Set("Transfer-Encoding", "chunked");
 			headers.Replace("Content-Type", "text/plain");
@@ -72,7 +72,7 @@ public abstract class HttpBinHandler {
 
 		} 
 		else {
-			res.WriteStatusLine(ResponseStatusCode.STATUS_OK);
+			res.WriteStatusLine(HttpStatus.STATUS_OK);
 
 			headers.Replace("Content-Length", originalContentLength);
 			var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");

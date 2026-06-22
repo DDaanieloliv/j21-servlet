@@ -1,16 +1,17 @@
-package io.ddaaniel.internal.routing;
+package io.ddaaniel.listener.pipe.routing;
 
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import io.ddaaniel.internal.routing.response.ResponseEntity;
+import io.ddaaniel.listener.pipe.routing.response.ResponseEntity;
 
-public class ReflectionRouter {
+
+public class RefRouter {
     private final Map<String, Supplier<Object>> compiledTable;
 
     @SuppressWarnings("unchecked")
-    public ReflectionRouter() {
+    public RefRouter() {
         try {
             Class<?> table = Class.forName("io.ddaaniel.generated.RouteTable");
             Method method = table.getMethod("table");
@@ -22,10 +23,9 @@ public class ReflectionRouter {
 
 	public ResponseEntity<?> dispatch(String targetPath) throws Exception {
 		Supplier<Object> routeAction = compiledTable.get(targetPath);
-		if (routeAction == null) return null; // 404
+		if (routeAction == null) return null;
 
 		Object rawResult = routeAction.get();
-
 		if (rawResult instanceof ResponseEntity) {
 			return (ResponseEntity<?>) rawResult;
 		}
