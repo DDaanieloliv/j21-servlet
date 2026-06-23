@@ -2,7 +2,8 @@ package io.ddaaniel.listener.pipe.routing.response;
 
 import java.util.HashMap;
 import java.util.Map;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
+
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 
 public class ResponseEntity<T> {
 	private final HttpStatus status;
@@ -28,7 +29,7 @@ public class ResponseEntity<T> {
 	}
 
 	public static <T> ResponseEntity<T> ok(T body) {
-		return new ResponseEntity<>(HttpStatus.STATUS_OK, new HashMap<>(), body);
+		return new ResponseEntity<>(HttpStatus.OK, new HashMap<>(), body);
 	}
 
 	public static <T> ResponseEntity<T> status(HttpStatus status) {

@@ -4,9 +4,9 @@ package io.ddaaniel.internal.parser.request.response;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.header.fieldline.Header;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
 
 public class Response {
     private final WritableByteChannel writer;
@@ -29,10 +29,10 @@ public class Response {
         try {
             String statusStr;
             switch (statuscode) {
-                case STATUS_OK: statusStr = "HTTP/1.1 200 OK\r\n"; break;
-                case STATUS_BAD_REQUEST: statusStr = "HTTP/1.1 400 Bad Request\r\n"; break;
-				case STATUS_NOT_FOUND: statusStr = "HTTP/1.1 404 Not Found\r\n"; break;
-                case STATUS_INTERNAL_SERVER_ERROR: statusStr = "HTTP/1.1 500 Internal Server Error\r\n"; break;
+                case OK: statusStr = "HTTP/1.1 200 OK\r\n"; break;
+                case BAD_REQUEST: statusStr = "HTTP/1.1 400 Bad Request\r\n"; break;
+				case NOT_FOUND: statusStr = "HTTP/1.1 404 Not Found\r\n"; break;
+                case INTERNAL_SERVER_ERROR: statusStr = "HTTP/1.1 500 Internal Server Error\r\n"; break;
                 default: throw new IllegalArgumentException("Unrecognized code: " + statuscode);
             }
 

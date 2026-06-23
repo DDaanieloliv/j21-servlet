@@ -6,11 +6,11 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.request.Requests;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
-import io.ddaaniel.internal.parser.request.response.status.util.FunHttp;
+import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
 import io.ddaaniel.listener.pipe.routing.RefRouter;
@@ -41,14 +41,14 @@ public class Servers {
 					res.WriteHeaders(headersMap);
 					res.WriteBody(body.getBytes());
 				} else {
-					res.WriteStatusLine(HttpStatus.STATUS_NOT_FOUND);
+					res.WriteStatusLine(HttpStatus.NOT_FOUND);
 					res.WriteHeaders(res.DefaultHeaders(0).h);
 					res.WriteBody(FunHttp.respond404().getBytes());
 				}
 			} catch (Exception e) {
 				System.err.println(" -> Reflection Router Error: " + e.getMessage());
 				try {
-					res.WriteStatusLine(HttpStatus.STATUS_INTERNAL_SERVER_ERROR);
+					res.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
 					res.WriteHeaders(res.DefaultHeaders(0).h);
 				} catch (Exception ignored) {}
 			}
@@ -68,7 +68,7 @@ public class Servers {
 			try {
 				r = new Requests().RequestFromReader(conn);
 			} catch (Exception err) { 
-				response.WriteStatusLine(HttpStatus.STATUS_BAD_REQUEST);
+				response.WriteStatusLine(HttpStatus.BAD_REQUEST);
 				response.WriteHeaders(headers.h);
 				return;
 			}

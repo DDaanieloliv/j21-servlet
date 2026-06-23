@@ -1,7 +1,7 @@
 package io.ddaaniel.controller;
 
 import io.ddaaniel.annotations.HTTP;
-import io.ddaaniel.internal.parser.request.response.status.util.FunHttp;
+import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
 
 public class VideoController {
 

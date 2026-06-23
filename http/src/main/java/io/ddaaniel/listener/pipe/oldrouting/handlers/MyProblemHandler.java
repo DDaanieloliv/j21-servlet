@@ -1,10 +1,10 @@
 package io.ddaaniel.listener.pipe.oldrouting.handlers;
 
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
-import io.ddaaniel.internal.parser.request.response.status.util.FunHttp;
+import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
 
 /**
  * MyProblemHandler
@@ -16,7 +16,7 @@ public abstract class MyProblemHandler {
 		headers.Replace("Content-Length", String.valueOf(body.length));
 		headers.Replace("Content-Type", "text/html");
 
-		res.WriteStatusLine(HttpStatus.STATUS_INTERNAL_SERVER_ERROR);
+		res.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
 		res.WriteHeaders(headers.h);
 		res.WriteBody(body);
 	}

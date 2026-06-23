@@ -1,11 +1,11 @@
 package io.ddaaniel.listener.pipe.oldrouting;
 
 
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
-import io.ddaaniel.internal.parser.request.response.status.util.FunHttp;
+import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.HttpBinHandler;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.MyProblemHandler;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.VideoStreamHandler;
@@ -44,7 +44,7 @@ public abstract class Router {
 		headers.Replace("Content-Length", String.valueOf(errBody.length));
 		headers.Replace("Content-Type", "text/html");
 
-		res.WriteStatusLine(HttpStatus.STATUS_NOT_FOUND);
+		res.WriteStatusLine(HttpStatus.NOT_FOUND);
 		res.WriteHeaders(headers.h);
 		res.WriteBody(errBody);
 	}
@@ -55,7 +55,7 @@ public abstract class Router {
 			var errBody = FunHttp.respond500().getBytes();
 			headers.Replace("Content-Length", String.valueOf(errBody.length));
 			headers.Replace("Content-Type", "text/html");
-			res.WriteStatusLine(HttpStatus.STATUS_INTERNAL_SERVER_ERROR);
+			res.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
 			res.WriteHeaders(headers.h);
 			res.WriteBody(errBody);
 		} catch (Exception critical) {

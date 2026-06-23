@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.request.response.status.util;
+package io.ddaaniel.internal.parser.util.HttpFun;
 
 /**
  * FunHttp

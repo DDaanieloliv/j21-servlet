@@ -5,10 +5,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
 
 /**
  * VideoStreamHandler
@@ -24,7 +24,7 @@ public abstract class VideoStreamHandler {
 			headers.Replace("content-length", String.valueOf(fileSize));
 			headers.Delete("transfer-encoding");
 
-			res.WriteStatusLine(HttpStatus.STATUS_OK);
+			res.WriteStatusLine(HttpStatus.OK);
 			res.WriteHeaders(headers.h);
 
 			var buffer = ByteBuffer.allocate(8192);

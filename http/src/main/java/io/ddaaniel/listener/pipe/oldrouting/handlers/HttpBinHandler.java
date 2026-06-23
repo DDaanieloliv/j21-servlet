@@ -9,10 +9,10 @@ import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.request.header.Headers;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
-import io.ddaaniel.internal.parser.request.response.status.HttpStatus;
 
 /**
  * HttpBin
@@ -32,7 +32,7 @@ public abstract class HttpBinHandler {
 
 		if (originalContentLength == null || target.contains("/stream")) {
 
-			res.WriteStatusLine(HttpStatus.STATUS_OK);
+			res.WriteStatusLine(HttpStatus.OK);
 			headers.Delete("Content-Length");
 			headers.Set("Transfer-Encoding", "chunked");
 			headers.Replace("Content-Type", "text/plain");
@@ -72,7 +72,7 @@ public abstract class HttpBinHandler {
 
 		} 
 		else {
-			res.WriteStatusLine(HttpStatus.STATUS_OK);
+			res.WriteStatusLine(HttpStatus.OK);
 
 			headers.Replace("Content-Length", originalContentLength);
 			var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");
