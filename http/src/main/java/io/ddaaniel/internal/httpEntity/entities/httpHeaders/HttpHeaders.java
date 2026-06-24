@@ -83,39 +83,106 @@ public class HttpHeaders {
 	public static final HttpHeaders EMPTY = new HttpHeaders(new LinkedHashMap<>());
 
 
-	public HttpHeaders(){
-		this.headers = new LinkedHashMap<String, List<String>>();
-	} 
-	public HttpHeaders(Map<String, List<String>> map){
-		this.headers = map;
-	} 
-	public HttpHeaders(HttpHeaders map){ 
-		this.headers = map.headers;
-	} 
+	/**
+	 * Construct a new, empty {@code HttpHeaders} instance.
+	 */
+	public HttpHeaders(){ this(new LinkedHashMap<String, List<String>>()); } 
 
-	public void add(String headerName, String headerValue) {
-		if (this.headers.get(headerName) != null) {
-			List<String> headerlist = this.headers.get(headerName);
-			headerlist.add(headerValue);
-			this.headers.put(headerName, headerlist);
-		}
-		else {
-			List<String> headerlist = new ArrayList<String>();
-			headerlist.add(headerValue);
-			this.headers.put(headerName, headerlist);
-		}
+	/**
+	 * Construct a new {@code HttpHeaders} instance backed by the supplied map.
+	 * <p>This constructor is available as an optimization for adapting to existing
+	 * headers map structures, primarily for internal use within the framework.
+	 * @param headers the headers map (expected to operate with case-insensitive keys)
+	 */
+	public HttpHeaders(Map<String, List<String>> headers){ this.headers = headers; } 
+
+	/**
+	 * Construct a new {@code HttpHeaders} instance backed by the supplied
+	 * {@code HttpHeaders}.
+	 * <p>Changes to the {@code HttpHeaders} created by this constructor will
+	 * write through to the supplied {@code HttpHeaders}. If you wish to copy
+	 * an existing {@code HttpHeaders} instance, use {@link #copyOf(HttpHeaders)}
+	 * instead.
+	 * <p>
+	 * @param httpHeaders the headers to expose
+	 * @see #copyOf(HttpHeaders)
+	 */
+	public HttpHeaders(HttpHeaders httpHeaders) { 
+		this.headers = (httpHeaders == EMPTY) ?
+				new LinkedHashMap<>() : new LinkedHashMap<>(httpHeaders.headers);
 	}
 
+	/**
+	 * Create a new, mutable {@code HttpHeaders} instance and copy the supplied
+	 * headers to that new instance.
+	 * <p>Changes to the returned {@code HttpHeaders} will not affect the
+	 * supplied headers map.
+	 * @param headers the headers to copy
+	 */
+	public static HttpHeaders copyOf(Map<String, List<String>> headers) {
+		HttpHeaders httpHeadersCopy = new HttpHeaders();
+		for (String name : headers.keySet()) {
+			List<String> values = headers.get(name);
+			if (values != null) {
+				httpHeadersCopy.put(name, new ArrayList<>(values));
+			}
+		}
+		return httpHeadersCopy;
+	}
+
+	/**
+	 * Create a new, mutable {@code HttpHeaders} instance and copy the supplied
+	 * headers to that new instance.
+	 * <p>Changes to the returned {@code HttpHeaders} will not affect the
+	 * supplied {@code HttpHeaders}.
+	 * @param httpHeaders the headers to copy
+	 * @see #HttpHeaders(HttpHeaders)
+	 */
+	public static HttpHeaders copyOf(HttpHeaders httpHeaders) {
+		return copyOf(httpHeaders.headers);
+	}
+
+	/**
+	 * Add the given, single header value under the given name.
+	 * @param headerName the header name
+	 * @param headerValue the header value
+	 * @throws UnsupportedOperationException if adding headers is not supported
+	 * @see #put(String, List)
+	 * @see #set(String, String)
+	 */
+	public void add(String headerName, String headerValue) {
+		this.headers.computeIfAbsent(headerName, (k) -> new ArrayList<>()).add(headerValue);
+	}
+
+	/**
+	 * Set the given, single header value under the given name.
+	 * @param headerName the header name
+	 * @param headerValue the header value
+	 * @throws UnsupportedOperationException if adding headers is not supported
+	 * @see #put(String, List)
+	 * @see #add(String, String)
+	 */
 	public void set(String headerName, String headerValue) {
-		List<String> headerList = new ArrayList<>();
+		List<String> headerList = new ArrayList<>(1);
 		headerList.add(headerValue);
 		this.headers.put(headerName, headerList);
 	}
 
+	/**
+	 * Remove a header from this HttpHeaders instance, and return the associated
+	 * value list or {@code null} if that header wasn't present.
+	 * @param key the name of the header to remove
+	 * @return the value list associated with the removed header name or {@code null}
+	 */
 	public List<String> remove(String key) {
 		return this.headers.remove(key);
 	}
 
+	/**
+	 * Set the given header value, or remove the header if {@code null}.
+	 * @param headerName the header name
+	 * @param headerValue the header value, or {@code null} for none
+	 */
 	private void setOrRemove(String headerName, String headerValue) {
 		if (headerValue != null) {
 			set(headerName, headerValue);
@@ -125,8 +192,31 @@ public class HttpHeaders {
 		}
 	}
 
+	/**
+	 * Set the (new) location of a resource,
+	 * as specified by the {@code Location} header.
+	 */
 	public void setLocation(URI location) {
 		setOrRemove(LOCATION, (location != null ? location.toASCIIString() : null));
+	}
+
+	/**
+	 * Return the first header value for the given header name, if any.
+	 * @param headerName the header name
+	 * @return the first header value, or {@code null} if none
+	 */
+	public String getFirst(String headerName) {
+		return this.headers.computeIfPresent(headerName, (k, v) -> v).getFirst();
+	}
+
+	/**
+	 * Return the (new) location of a resource
+	 * as specified by the {@code Location} header.
+	 * <p>Returns {@code null} when the location is unknown.
+	 */
+	public URI getLocation() {
+		String value = getFirst(LOCATION);
+		return (value != null ? URI.create(value) : null);
 	}
 
 	public void setContentType(String mediaType) {
@@ -138,6 +228,11 @@ public class HttpHeaders {
 		}
 	}
 
+	/**
+	 * Set the media type of the body,
+	 * as specified by the {@code Content-Type} header.
+	 * For while treated like a String.
+	 */
 	public void setContentLength(long contentLength) {
 		if (contentLength < 0) {
 			throw new IllegalArgumentException("Content-Length must be a non-negative number");
@@ -145,23 +240,55 @@ public class HttpHeaders {
 		set(CONTENT_LENGTH, Long.toString(contentLength));
 	}
 
+	/**
+	 * Set the list of values associated with the given header name. Returns the
+	 * previous list of values, or {@code null} if the header was not present.
+	 * @param headerName the header name
+	 * @param headerValues the new values
+	 * @return the old values for the given header name
+	 */
 	public List<String> put(String headerName, List<String> headerValues) {
 		return this.headers.put(headerName, headerValues);
 	}
 
-
+	/**
+	 * Return a view of the headers as an entry {@code Set} of key-list pairs.
+	 * <p>Both {@link Iterator#remove()} and {@link Entry#setValue}
+	 * are supported and mutate the headers.
+	 * <p>This collection is guaranteed to contain one entry per header name
+	 * even if the backing structure stores multiple casing variants of names,
+	 * at the cost of first copying the names into a case-insensitive set for
+	 * filtering the iteration.
+	 * @return a {@code Set} view that iterates over all headers in a
+	 * case-insensitive manner
+	 */
     public Set<Entry<String, List<String>>> headerSet() {
         return this.headers.entrySet();
     }
 
+	/**
+	 * Perform an action over each header, as when iterated via
+	 * {@link #headerSet()}.
+	 * @param action the action to be performed for each entry
+	 */
     public void forEach(BiConsumer<? super String, ? super List<String>> action) {
         headerSet().forEach(e -> action.accept(e.getKey(), e.getValue()));
     }
 
+	/**
+	 * Put all the entries from the given HttpHeaders into this HttpHeaders.
+	 * @param headers the given headers
+	 * @see #put(String, List)
+	 */
 	public void putAll(HttpHeaders headers) {
 		headers.forEach(this::put);
 	}
 
+	/**
+	 * Put all the entries from the given {@code Map} into this HttpHeaders.
+	 * @param headers the given headers
+	 * @see #put(String, List)
+	 */
 	public void putAll(Map<? extends String, ? extends List<String>> headers) {
 		for (String name : headers.keySet()) {
 			put(name, headers.get(name));
