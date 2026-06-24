@@ -15,8 +15,6 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 
 	private final HttpStatusCode status;
 
-
-
 	/**
 	 * Create a {@code ResponseEntity} with a status code only.
 	 * @param status the status code
@@ -85,7 +83,7 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 	 */
 	public static BodyBuilder status(HttpStatusCode status) {
 		if (status == null) throw new IllegalArgumentException("HttpStatusCode must not be null");
-		return new DefaultBuilder(status);
+		return new DefaultMessageBuilder(status);
 	}
 
 	/**
@@ -94,7 +92,7 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 	 * @return the created builder
 	 */
 	public static BodyBuilder status(int status) {
-		return new DefaultBuilder(status);
+		return new DefaultMessageBuilder(status);
 	}
 
 	/**
@@ -238,7 +236,7 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 		B headers(Consumer<HttpHeaders> headersConsumer);
 
 		/**
-		 * Set the location of a resource, as specified by the {@code Location} header.
+		 * Set the location of a resource, as specified by the Location} header.
 		 * @param location the location
 		 * @return this builder
 		 * @see HttpHeaders#setLocation(URI)
@@ -287,17 +285,17 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 
 
 
-	private static class DefaultBuilder implements BodyBuilder {
+	private static class DefaultMessageBuilder implements BodyBuilder {
 
 		private final HttpStatusCode statusCode;
 
 		private final HttpHeaders headers = new HttpHeaders();
 
-		public DefaultBuilder(int statusCode) {
+		public DefaultMessageBuilder(int statusCode) {
 			this(HttpStatusCode.valueOf(statusCode));
 		}
 
-		public DefaultBuilder(HttpStatusCode statusCode) {
+		public DefaultMessageBuilder(HttpStatusCode statusCode) {
 			this.statusCode = statusCode;
 		}
 

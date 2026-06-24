@@ -9,8 +9,8 @@ import io.ddaaniel.internal.parser.request.mapper.state.ParsingState;
 public class Request {
 	public RequestLine RequestLine;
 	public Headers Headers;
-	public ParsingState State;
 	public String Body;
+	public ParsingState State;
 
 	public Request(){
 		this.Headers = new Headers();
