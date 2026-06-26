@@ -2,7 +2,7 @@ package io.ddaaniel.listener.pipe.oldrouting;
 
 
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.header.HeaderHandler;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
@@ -39,7 +39,7 @@ public abstract class Router {
 
 
 
-	private static void handleNotFound(Request req, Headers headers, Response res) throws Exception {
+	private static void handleNotFound(Request req, HeaderHandler headers, Response res) throws Exception {
 		var errBody = FunHttp.respond404().getBytes();
 		headers.Replace("Content-Length", String.valueOf(errBody.length));
 		headers.Replace("Content-Type", "text/html");
@@ -49,7 +49,7 @@ public abstract class Router {
 		res.WriteBody(errBody);
 	}
 
-	private static void handleInternalError(Headers headers, Response res, Exception err) {
+	private static void handleInternalError(HeaderHandler headers, Response res, Exception err) {
 		System.err.println(" -> Global Router Error: " + err.getMessage());
 		try {
 			var errBody = FunHttp.respond500().getBytes();

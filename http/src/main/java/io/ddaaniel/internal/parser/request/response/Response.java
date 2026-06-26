@@ -4,9 +4,10 @@ package io.ddaaniel.internal.parser.request.response;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
+import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.Headers;
-import io.ddaaniel.internal.parser.request.header.fieldline.Header;
+import io.ddaaniel.internal.httpStatus.HttpStatusCode;
+import io.ddaaniel.internal.parser.request.header.HeaderHandler;
 
 public class Response {
     private final WritableByteChannel writer;
@@ -15,8 +16,8 @@ public class Response {
         this.writer = writer;
     }
 
-    public Headers DefaultHeaders(int contentLen) {
-        var h = new Headers();
+    public HeaderHandler DefaultHeaders(int contentLen) {
+        var h = new HeaderHandler();
         
         h.Replace("Content-Length", String.valueOf(contentLen));
         h.Replace("Connection", "close");
@@ -25,15 +26,16 @@ public class Response {
         return h;
     }
 
-    public int WriteStatusLine(HttpStatus statuscode) {
+    public int WriteStatusLine(HttpStatusCode statuscode) {
+		var status = HttpStatus.valueOf(statuscode.value());
         try {
             String statusStr;
-            switch (statuscode) {
+            switch (status) {
                 case OK: statusStr = "HTTP/1.1 200 OK\r\n"; break;
                 case BAD_REQUEST: statusStr = "HTTP/1.1 400 Bad Request\r\n"; break;
 				case NOT_FOUND: statusStr = "HTTP/1.1 404 Not Found\r\n"; break;
                 case INTERNAL_SERVER_ERROR: statusStr = "HTTP/1.1 500 Internal Server Error\r\n"; break;
-                default: throw new IllegalArgumentException("Unrecognized code: " + statuscode);
+                default: throw new IllegalArgumentException("Unrecognized code: " + statuscode.value());
             }
 
             var statusline = ByteBuffer.wrap(statusStr.getBytes());
@@ -47,11 +49,15 @@ public class Response {
         }
     }
 
-    public int WriteHeaders(Header h) {
+    public int WriteHeaders(HttpHeaders h) {
         try {
             var string = new StringBuilder();
-            h.map().forEach((key, value) -> { 
-                string.append(String.format("%s: %s\r\n", key, value)); 
+            h.forEach((key, value) -> { 
+                string.append(String.format("%s:", key)); 
+				for (String str : value) {
+					string.append(String.format(" %s", str)); 
+				}
+                string.append("%s \r\n"); 
             });
             string.append("\r\n");
             

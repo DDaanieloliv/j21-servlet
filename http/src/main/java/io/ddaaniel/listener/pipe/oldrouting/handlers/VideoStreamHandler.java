@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.header.HeaderHandler;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 
@@ -15,7 +15,7 @@ import io.ddaaniel.internal.parser.request.response.Response;
  */
 public abstract class VideoStreamHandler {
 
-	public static void handleVideoStreaming(Request req, Headers headers, Response res) throws Exception {
+	public static void handleVideoStreaming(Request req, HeaderHandler headers, Response res) throws Exception {
 		var videoPath = Path
 				.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/main/java/io/ddaaniel/assets/video.mp4");
 		try (FileChannel fileChannel = FileChannel.open(videoPath, StandardOpenOption.READ)) {

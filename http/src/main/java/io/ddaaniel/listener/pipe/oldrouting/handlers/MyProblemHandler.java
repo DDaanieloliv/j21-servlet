@@ -1,7 +1,7 @@
 package io.ddaaniel.listener.pipe.oldrouting.handlers;
 
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.header.HeaderHandler;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
@@ -11,7 +11,7 @@ import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
  */
 public abstract class MyProblemHandler {
 
-	public static void handleMyProblem(Request req, Headers headers, Response res) throws Exception {
+	public static void handleMyProblem(Request req, HeaderHandler headers, Response res) throws Exception {
 		var body = FunHttp.respond500().getBytes();
 		headers.Replace("Content-Length", String.valueOf(body.length));
 		headers.Replace("Content-Type", "text/html");

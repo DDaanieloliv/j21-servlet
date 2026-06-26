@@ -1,6 +1,6 @@
 package io.ddaaniel.internal.parser.request.mapper;
 
-import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.header.HeaderHandler;
 import io.ddaaniel.internal.parser.request.mapper.state.ParsingState;
 
 /**
@@ -8,15 +8,15 @@ import io.ddaaniel.internal.parser.request.mapper.state.ParsingState;
  */
 public class Request {
 	public RequestLine RequestLine;
-	public Headers Headers;
+	public HeaderHandler Headers;
 	public String Body;
 	public ParsingState State;
 
 	public Request(){
-		this.Headers = new Headers();
+		this.Headers = new HeaderHandler();
 	}
 
-	public Request(RequestLine r, ParsingState s, Headers h, String b) {
+	public Request(RequestLine r, ParsingState s, HeaderHandler h, String b) {
 		this.RequestLine = r;
 		this.Headers = h;
 		this.State = s;

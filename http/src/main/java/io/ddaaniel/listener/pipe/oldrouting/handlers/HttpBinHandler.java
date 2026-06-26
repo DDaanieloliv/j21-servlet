@@ -10,7 +10,7 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.Headers;
+import io.ddaaniel.internal.parser.request.header.HeaderHandler;
 import io.ddaaniel.internal.parser.request.mapper.Request;
 import io.ddaaniel.internal.parser.request.response.Response;
 
@@ -19,7 +19,7 @@ import io.ddaaniel.internal.parser.request.response.Response;
  */
 public abstract class HttpBinHandler {
 
-	public static void HttpStreamRes(Request req, Headers headers, Response res) throws Exception {
+	public static void HttpStreamRes(Request req, HeaderHandler headers, Response res) throws Exception {
 		var target = req.RequestLine.RequestTarget;
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()

@@ -63,10 +63,7 @@ public class RequestEntity<T> extends HttpEntity<T> {
 	 * {@link UnsupportedOperationException} if the {@code RequestEntity} was
 	 * created with a URI template and variables rather than with a {@link URI}
 	 * instance. This is because a URI cannot be created without further input
-	 * on how to expand template and encode the URI. In such cases, the
-	 * {@code URI} is prepared by the
-	 * {@link org.springframework.web.client.RestTemplate} with the help of the
-	 * {@link org.springframework.web.util.UriTemplateHandler} it is configured with.
+	 * on how to expand template and encode the URI.
 	 */
 	public URI getUrl() {
 		if (this.target == null) {
@@ -85,6 +82,7 @@ public class RequestEntity<T> extends HttpEntity<T> {
 	public String getMethod() {
 		return this.method;
 	}
+
 
 	// Static builder methods
 
@@ -118,7 +116,6 @@ public class RequestEntity<T> extends HttpEntity<T> {
 	public static BodyBuilder method(String method, String uriTemplate, Map<String, ?> uriVariables) {
 		return new DefaultMessageBuilder(method, uriTemplate, uriVariables);
 	}
-
 
 	/**
 	 * Create an HTTP GET builder with the given url.
@@ -260,7 +257,6 @@ public class RequestEntity<T> extends HttpEntity<T> {
 	 * @param <B> the builder subclass
 	 */
 	public interface HeadersBuilder<B extends HeadersBuilder<B>> {
-
 		/**
 		 * Add the given, single header value under the given name.
 		 * @param headerName  the header name
@@ -302,7 +298,6 @@ public class RequestEntity<T> extends HttpEntity<T> {
 	 * Defines a builder that adds a body to the response entity.
 	 */
 	public interface BodyBuilder extends HeadersBuilder<BodyBuilder> {
-
 		/**
 		 * Set the length of the body in bytes, as specified by the
 		 * {@code Content-Length} header.
@@ -317,7 +312,7 @@ public class RequestEntity<T> extends HttpEntity<T> {
 		 * by the {@code Content-Type} header.
 		 * @param contentType the content type
 		 * @return this builder
-		 * @see HttpHeaders#setContentType(MediaType)
+		 * @see HttpHeaders#setContentType(String)
 		 */
 		BodyBuilder contentType(String contentType);
 
@@ -380,7 +375,6 @@ public class RequestEntity<T> extends HttpEntity<T> {
 			headersConsumer.accept(this.headers);
 			return this;
 		}
-
 
 		@Override
 		public BodyBuilder contentLength(long contentLength) {

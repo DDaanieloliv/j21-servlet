@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
 
+import com.sun.tools.javac.util.StringUtils;
+
 
 /**
  * HttpHeaders
@@ -143,6 +145,23 @@ public class HttpHeaders {
 	}
 
 	/**
+	 * Returns {@code true} if this HttpHeaders contains an entry for the
+	 * given header name.
+	 * @param headerName the header name
+	 */
+	public boolean containsHeader(String headerName) {
+		return this.headers.containsKey(headerName);
+	}
+
+	/**
+	 * Get the list of values associated with the given header name, or null.
+	 * @param headerName the header name
+	 */
+	public List<String> get(String headerName) {
+		return this.headers.get(headerName);
+	}
+
+	/**
 	 * Add the given, single header value under the given name.
 	 * @param headerName the header name
 	 * @param headerValue the header value
@@ -198,6 +217,16 @@ public class HttpHeaders {
 	 */
 	public void setLocation(URI location) {
 		setOrRemove(LOCATION, (location != null ? location.toASCIIString() : null));
+	}
+
+	/**
+	 * Return the media type of the body, as specified
+	 * by the {@code Content-Type} header.
+	 * <p>Returns {@code null} when the {@code Content-Type} header is not set.
+	 */
+	public String getContentType() {
+		String value = getFirst("Content-Type");
+		return (value != null && !value.isBlank()) ? value : null;
 	}
 
 	/**

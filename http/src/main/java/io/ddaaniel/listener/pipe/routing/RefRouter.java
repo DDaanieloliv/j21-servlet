@@ -4,7 +4,8 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import io.ddaaniel.listener.pipe.routing.response.ResponseEntity;
+import io.ddaaniel.internal.httpEntity.entities.ResponseEntity;
+
 
 
 public class RefRouter {
