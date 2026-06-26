@@ -185,4 +185,19 @@ public class Util {
 
 		return match;
 	}
+
+
+	public static boolean isToken(byte[] bytes) {
+		for (byte i : bytes) {
+			var found = false;
+			if (i >= 'A' && i <= 'Z' || i >= 'a' && i <= 'z' || i >= '0' && i <= '9') {
+				found = true;
+			}
+			switch (i) {
+				case '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_','`', '|', '~' : found = true;
+			}
+			if (!found) return false;
+		}
+		return true;
+	}
 }

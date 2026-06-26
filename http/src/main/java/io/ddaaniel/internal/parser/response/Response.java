@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.request.response;
+package io.ddaaniel.internal.parser.response;
 
 
 import java.nio.ByteBuffer;
@@ -7,7 +7,7 @@ import java.nio.channels.WritableByteChannel;
 import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.httpStatus.HttpStatusCode;
-import io.ddaaniel.internal.parser.request.header.HeaderHandler;
+
 
 public class Response {
     private final WritableByteChannel writer;
@@ -16,14 +16,12 @@ public class Response {
         this.writer = writer;
     }
 
-    public HeaderHandler DefaultHeaders(int contentLen) {
-        var h = new HeaderHandler();
-        
-        h.Replace("Content-Length", String.valueOf(contentLen));
-        h.Replace("Connection", "close");
-        h.Replace("Content-Type", "text/plain");
-
-        return h;
+    public HttpHeaders DefaultHeaders(int contentLen) {
+		var header = new HttpHeaders();
+		header.set("Content-Length", String.valueOf(contentLen));
+		header.set("Connection", "close");
+		header.set("Content-Type", "text/plain");
+        return header;
     }
 
     public int WriteStatusLine(HttpStatusCode statuscode) {

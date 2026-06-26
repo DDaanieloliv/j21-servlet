@@ -9,18 +9,18 @@ import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
+import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.HeaderHandler;
-import io.ddaaniel.internal.parser.request.mapper.Request;
-import io.ddaaniel.internal.parser.request.response.Response;
+import io.ddaaniel.internal.parser.request.Request;
+import io.ddaaniel.internal.parser.response.Response;
 
 /**
  * HttpBin
  */
 public abstract class HttpBinHandler {
 
-	public static void HttpStreamRes(Request req, HeaderHandler headers, Response res) throws Exception {
-		var target = req.RequestLine.RequestTarget;
+	public static void HttpStreamRes(Request req, HttpHeaders headers, Response res) throws Exception {
+		var target = req.uriWrap;
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()
 			.uri(URI.create("https://httpbin.org" + target.substring("/httpbin".length())))
@@ -33,11 +33,11 @@ public abstract class HttpBinHandler {
 		if (originalContentLength == null || target.contains("/stream")) {
 
 			res.WriteStatusLine(HttpStatus.OK);
-			headers.Delete("Content-Length");
-			headers.Set("Transfer-Encoding", "chunked");
-			headers.Replace("Content-Type", "text/plain");
-			headers.Set("Trailer", "X-Content-SHA256, X-Content-Length");
-			res.WriteHeaders(headers.h);
+			headers.remove("Content-Length");
+			headers.set("Transfer-Encoding", "chunked");
+			headers.set("Content-Type", "text/plain");
+			headers.set("Trailer", "X-Content-SHA256, X-Content-Length");
+			res.WriteHeaders(headers);
 
 			var fullBody = new ByteArrayOutputStream();
 			InputStream bodyStream = resOut.body();
@@ -74,14 +74,14 @@ public abstract class HttpBinHandler {
 		else {
 			res.WriteStatusLine(HttpStatus.OK);
 
-			headers.Replace("Content-Length", originalContentLength);
+			headers.set("Content-Length", originalContentLength);
 			var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");
-			headers.Replace("Content-Type", originalContentType);
+			headers.set("Content-Type", originalContentType);
 
-			headers.Delete("Transfer-Encoding");
-			headers.Delete("Trailer");
+			headers.remove("Transfer-Encoding");
+			headers.remove("Trailer");
 
-			res.WriteHeaders(headers.h);
+			res.WriteHeaders(headers);
 
 			InputStream bodyStream = resOut.body();
 			int n;

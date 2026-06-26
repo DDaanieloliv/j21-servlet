@@ -1,10 +1,10 @@
 package io.ddaaniel.listener.pipe.oldrouting;
 
 
+import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.header.HeaderHandler;
-import io.ddaaniel.internal.parser.request.mapper.Request;
-import io.ddaaniel.internal.parser.request.response.Response;
+import io.ddaaniel.internal.parser.request.Request;
+import io.ddaaniel.internal.parser.response.Response;
 import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.HttpBinHandler;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.MyProblemHandler;
@@ -17,7 +17,7 @@ import io.ddaaniel.listener.pipe.oldrouting.handlers.YourProblemHandler;
 public abstract class Router {
 
 	public static void route(Request req, Response res) {
-		var target = req.RequestLine.RequestTarget;
+		var target = req.uriWrap;
 		var headers = res.DefaultHeaders(0);
 
 		try {
@@ -39,24 +39,24 @@ public abstract class Router {
 
 
 
-	private static void handleNotFound(Request req, HeaderHandler headers, Response res) throws Exception {
+	private static void handleNotFound(Request req, HttpHeaders headers, Response res) throws Exception {
 		var errBody = FunHttp.respond404().getBytes();
-		headers.Replace("Content-Length", String.valueOf(errBody.length));
-		headers.Replace("Content-Type", "text/html");
+		headers.set("Content-Length", String.valueOf(errBody.length));
+		headers.set("Content-Type", "text/html");
 
 		res.WriteStatusLine(HttpStatus.NOT_FOUND);
-		res.WriteHeaders(headers.h);
+		res.WriteHeaders(headers);
 		res.WriteBody(errBody);
 	}
 
-	private static void handleInternalError(HeaderHandler headers, Response res, Exception err) {
+	private static void handleInternalError(HttpHeaders headers, Response res, Exception err) {
 		System.err.println(" -> Global Router Error: " + err.getMessage());
 		try {
 			var errBody = FunHttp.respond500().getBytes();
-			headers.Replace("Content-Length", String.valueOf(errBody.length));
-			headers.Replace("Content-Type", "text/html");
+			headers.set("Content-Length", String.valueOf(errBody.length));
+			headers.set("Content-Type", "text/html");
 			res.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
-			res.WriteHeaders(headers.h);
+			res.WriteHeaders(headers);
 			res.WriteBody(errBody);
 		} catch (Exception critical) {
 			critical.printStackTrace();

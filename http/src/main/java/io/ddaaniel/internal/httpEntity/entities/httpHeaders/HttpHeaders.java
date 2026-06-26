@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
 
-import com.sun.tools.javac.util.StringUtils;
 
 
 /**
@@ -225,7 +224,7 @@ public class HttpHeaders {
 	 * <p>Returns {@code null} when the {@code Content-Type} header is not set.
 	 */
 	public String getContentType() {
-		String value = getFirst("Content-Type");
+		String value = getFirst(CONTENT_TYPE);
 		return (value != null && !value.isBlank()) ? value : null;
 	}
 
@@ -235,7 +234,7 @@ public class HttpHeaders {
 	 * @return the first header value, or {@code null} if none
 	 */
 	public String getFirst(String headerName) {
-		return this.headers.computeIfPresent(headerName, (k, v) -> v).getFirst();
+		return this.headers.computeIfPresent(headerName.toLowerCase(), (k, v) -> v).getFirst();
 	}
 
 	/**
@@ -267,6 +266,16 @@ public class HttpHeaders {
 			throw new IllegalArgumentException("Content-Length must be a non-negative number");
 		}
 		set(CONTENT_LENGTH, Long.toString(contentLength));
+	}
+
+	/**
+	 * Return the length of the body in bytes, as specified by the
+	 * {@code Content-Length} header.
+	 * <p>Returns -1 when the content-length is unknown.
+	 */
+	public long getContentLength() {
+		String value = getFirst(CONTENT_LENGTH);
+		return (value != null ? Long.parseLong(value) : -1);
 	}
 
 	/**

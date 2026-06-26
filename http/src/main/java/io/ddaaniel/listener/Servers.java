@@ -10,16 +10,12 @@ import java.util.concurrent.Executors;
 
 import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.URITooLongException;
-import io.ddaaniel.internal.httpEntity.entities.RequestEntity;
 import io.ddaaniel.internal.httpEntity.entities.ResponseEntity;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.RequestHandler;
-import io.ddaaniel.internal.parser.request.header.HeaderHandler;
-import io.ddaaniel.internal.parser.request.mapper.Request;
-import io.ddaaniel.internal.parser.request.mapper.state.ParsingState;
-import io.ddaaniel.internal.parser.request.response.Response;
+import io.ddaaniel.internal.parser.request.Request;
+import io.ddaaniel.internal.parser.request.state.ParsingState;
+import io.ddaaniel.internal.parser.response.Response;
 import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
-import io.ddaaniel.internal.parser.util.serializer.SerializationManager;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
 import io.ddaaniel.listener.pipe.routing.RefRouter;
@@ -38,26 +34,26 @@ public class Servers {
 		var referenceRouter = new RefRouter();
 		var s = new Servers().Serve(port, (req, res) -> {
 			try {
-				String target = req.r.getUrl().toString();
+				String target = req.uriWrap;
 				ResponseEntity<?> response = referenceRouter.dispatch(target);
 
 				if (response != null) {
 					String body = response.getBody() != null ? response.getBody().toString() : "";
-					var headersMap = res.DefaultHeaders(body.length()).h;
+					var headersMap = res.DefaultHeaders(body.getBytes().length);
 					res.WriteStatusLine(response.getStatusCode());
 					if (response.getHeaders() != null)  headersMap.putAll(response.getHeaders());
 					res.WriteHeaders(headersMap);
 					res.WriteBody(body.getBytes());
 				} else {
 					res.WriteStatusLine(HttpStatus.NOT_FOUND);
-					res.WriteHeaders(res.DefaultHeaders(0).h);
+					res.WriteHeaders(res.DefaultHeaders(0));
 					res.WriteBody(FunHttp.respond404().getBytes());
 				}
 			} catch (Exception e) {
 				System.err.println(" -> Reflection Router Error: " + e.getMessage());
 				try {
 					res.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
-					res.WriteHeaders(res.DefaultHeaders(0).h);
+					res.WriteHeaders(res.DefaultHeaders(0));
 				} catch (Exception ignored) {}
 			}
 
@@ -71,12 +67,12 @@ public class Servers {
 		try (conn) {
 			var response = new Response(conn);
 			var headers = response.DefaultHeaders(0);
-			var r = new RequestHandler();
+			var r = new Request();
 			try {
 				r = RequestFromReader(conn);
 			} catch (Exception err) { 
 				response.WriteStatusLine(HttpStatus.BAD_REQUEST);
-				response.WriteHeaders(headers.h);
+				response.WriteHeaders(headers);
 				return;
 			}
 			server.handler.handle(r, response);
@@ -101,9 +97,8 @@ public class Servers {
 	}
 
 
-	public RequestHandler RequestFromReader(ReadableByteChannel reader) {
-		var request = new RequestHandler();
-		var header = new HeaderHandler();
+	public Request RequestFromReader(ReadableByteChannel reader) {
+		var request = new Request();
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
 
@@ -119,7 +114,7 @@ public class Servers {
 				}
 				buf.flip();
 				fliped = true;
-				Parse(buf, request, header);
+				Parse(buf, request);
 
 				if (buf.remaining() == buf.capacity()) {
 					request.State = ParsingState.STATE_ERROR;
@@ -138,57 +133,55 @@ public class Servers {
 	}
 
 
-	private Integer Parse(ByteBuffer buf, RequestHandler requestHandler, HeaderHandler headerHandler) throws Exception {
+	private Integer Parse(ByteBuffer buf, Request req) throws Exception {
 		var read = 0;
 		outer:
 		for (;;) {
-			switch (requestHandler.State) {
+			switch (req.State) {
 				case STATE_DONE: 
 					break outer;
 				case STATE_ERROR:
 					throw new Exception("Somehow its go wrong");
 				case STATE_INIT:
 					buf.mark();
-					var parsedRequestLine = RequestHandler.parseRequestLine(buf);
-					var requestLine = parsedRequestLine._1;
-					var totalReadR = parsedRequestLine._2;
-					if (totalReadR == 0) {
+					var parsed = req.parseRequestLine(buf, req);
+					if (parsed == 0) {
 						buf.reset();
 						break outer;
 					}
-					requestHandler.r  = new RequestEntity<>(requestLine.getMethod(), requestLine.getUrl());
-					read += totalReadR;
-					requestHandler.State = ParsingState.STATE_HEADERS;
+					req.State = ParsingState.STATE_HEADERS;
+					read += parsed;
 					break;
 
 				case STATE_HEADERS:
-					var parsedHeader = headerHandler.Parse(buf);
+					var parsedHeader = req.Parse(buf);
 					var totalReadH = parsedHeader._1;
 					var done = parsedHeader._2;
 					if (totalReadH == 0) break outer;
 					read += totalReadH;
-					if (done) requestHandler.State = ParsingState.STATE_BODY;
+					if (done) req.State = ParsingState.STATE_BODY;
 					break;
 
 				case STATE_BODY:
-					var length = RequestHandler.getLength(headerHandler, "content-length" , 0);
+					var length = (req.getContentLength() != -1) ? req.getContentLength() : 0;
 					if (length == 0) {
-						requestHandler.State = ParsingState.STATE_DONE;
+						req.State = ParsingState.STATE_DONE;
 						break;
 					}
-					var serializer = new SerializationManager();
-					var stillMissing = length - serializer.convert(requestHandler.r.getBody(), headerHandler.h.getContentType()).length;
-					var available = buf.remaining();
-					var remaining = Math.min(stillMissing, available);
+					long alreadyRead = req.readSoFar;
+					long stillMissing = length - alreadyRead;
+					int available = buf.remaining();
+					long remaining = Math.min(stillMissing, available);
 					if (remaining > 0) {
-						var chunk = new byte[remaining];
+						var chunk = new byte[(int) remaining];
 						buf.get(chunk);
-						r.Body += new String(chunk);
+						req.readSoFar += remaining;
 						read += remaining;
 					}
-					if (length == serializer.convert(requestHandler.r.getBody(), headerHandler.h.getContentType()).length) {
-						requestHandler.State = ParsingState.STATE_DONE;
-					} else break outer;
+					if (req.readSoFar == length) {
+						req.State = ParsingState.STATE_DONE;
+					}
+					else break outer;
 					break;
 				default: 
 					throw new Exception("Somehow its go wrong");

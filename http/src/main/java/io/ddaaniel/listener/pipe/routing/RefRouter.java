@@ -4,7 +4,10 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Supplier;
 
+
 import io.ddaaniel.internal.httpEntity.entities.ResponseEntity;
+import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
+import io.ddaaniel.internal.httpStatus.HttpStatus;
 
 
 
@@ -32,6 +35,11 @@ public class RefRouter {
 		}
 
 		String bodyText = (rawResult != null) ? rawResult.toString() : "";
-		return ResponseEntity.ok(bodyText);
+		var header = new HttpHeaders();
+		header.set("Content-Length", String.valueOf(bodyText.getBytes().length));
+		header.set("Connection", "close");
+		header.set("Content-Type", "text/plain");
+		var res = new ResponseEntity<>(bodyText, header, HttpStatus.OK);
+		return res;
 	}
 }

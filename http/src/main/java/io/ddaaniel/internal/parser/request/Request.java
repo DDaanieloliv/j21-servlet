@@ -1,0 +1,110 @@
+package io.ddaaniel.internal.parser.request;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+
+import io.ddaaniel.internal.exception.MalformedHeaderException;
+import io.ddaaniel.internal.exception.MalformedRequestLineException;
+import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
+import io.ddaaniel.internal.parser.request.state.ParsingState;
+import io.ddaaniel.internal.parser.util.Util;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+
+/**
+ * Request
+ */
+public class Request extends HttpHeaders {
+
+	public String uriWrap;
+	public String methodWrap;
+	public long readSoFar;
+	public ParsingState State = ParsingState.STATE_INIT;
+
+	public int parseRequestLine(ByteBuffer bytes, Request requestWrap) {
+		var read = 0;
+		var SEPARATOR = "\r\n";
+		var START = bytes.position();
+		var EOL = Util.IndexOf(bytes, SEPARATOR, START);
+		if (EOL == -1) {
+			return read;
+		}
+
+		var lineBytes = new byte[EOL - START];
+		bytes.get(lineBytes); 
+		bytes.get();
+		bytes.get();
+
+		read += (bytes.position() - START);
+		var startLine = new String(lineBytes, StandardCharsets.UTF_8);
+		var parts = startLine.split(" ");
+		if (parts.length != 3) { 
+			throw new MalformedRequestLineException(
+					" -> malformed start-line -- bytes-read: " + read
+					);
+		}
+
+		var httpParts = parts[2].split("/");
+		if (httpParts.length != 2 || !httpParts[0].equals("HTTP") || !httpParts[1].equals("1.1")) { 
+			throw new MalformedRequestLineException(
+					" -> malformed request-line -- bytes-read: " + read
+					);
+		}
+
+		requestWrap.methodWrap = parts[1];
+		requestWrap.uriWrap = httpParts[1];
+		return read;
+	}
+
+	public Tuple2<Integer, Boolean> Parse(ByteBuffer data) { 
+		var read = 0; 
+		var done = false;
+		var START = data.position();
+		var SEPARATOR = "\r\n";
+
+		for (;;) {
+			var EOL = Util.IndexOf(data, SEPARATOR, START);
+			if (EOL == -1) {
+				break;
+			}
+			if (EOL - START == 0) {
+				data.get();
+				data.get();
+				done = true;
+				read += SEPARATOR.length();
+				break;
+			}
+			var headerline = new byte[EOL - START];
+			data.get(headerline);
+			data.get();
+			data.get();
+			var option = parseHeader(headerline);
+			var name = option._1;
+			var value = option._2;
+
+			if (!Util.isToken(name.getBytes())) {
+				throw new MalformedHeaderException(" -> malformed header-name ");
+			}
+			set(name, value);
+			read += (EOL - START) + SEPARATOR.length();
+			START = data.position();
+		}
+
+		return Tuple.of(read, done);
+	}
+
+	private Tuple2<String, String> parseHeader(byte[] h) {
+		var parts = Util.Split(h, ":", 2);
+		if (parts.length != 2) {
+			throw new MalformedHeaderException(" -> malformed field-line ");
+		}
+
+		var name = parts[0];
+		var value = Util.TrimSpace(parts[1]);
+		if (Util.HasSuffix(name, " ".getBytes())) {
+			throw new MalformedHeaderException(" -> malformed field-name ");
+		}
+		return Tuple.of(new String(name), new String(value));
+	} 
+
+}
