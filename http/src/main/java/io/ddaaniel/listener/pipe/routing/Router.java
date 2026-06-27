@@ -11,11 +11,11 @@ import io.ddaaniel.internal.httpStatus.HttpStatus;
 
 
 
-public class RefRouter {
+public class Router {
     private final Map<String, Supplier<Object>> compiledTable;
 
     @SuppressWarnings("unchecked")
-    public RefRouter() {
+    public Router() {
         try {
             Class<?> table = Class.forName("io.ddaaniel.generated.RouteTable");
             Method method = table.getMethod("table");

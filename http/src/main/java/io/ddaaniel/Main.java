@@ -3,7 +3,7 @@ package io.ddaaniel;
 import java.util.concurrent.CountDownLatch;
 
 
-import io.ddaaniel.listener.Servers;
+import io.ddaaniel.listener.Servlet;
 
 public class Main {
 	public static void main(String[] args) {
@@ -12,7 +12,7 @@ public class Main {
 		var keepAliveLatch = new CountDownLatch(1);
 
 		try {
-			var s = new Servers().handleConnection(port);
+			var s = new Servlet().handleConnection(port);
 
 			System.out.println(" -> Server started on port 42069 ");
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {

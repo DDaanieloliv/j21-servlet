@@ -10,6 +10,7 @@ import io.ddaaniel.internal.httpStatus.HttpStatusCode;
 
 
 public class Response {
+
     private final WritableByteChannel writer;
 
     public Response(WritableByteChannel writer) {
