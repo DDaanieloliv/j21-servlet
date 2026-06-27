@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.response;
+package io.ddaaniel.internal.parser.writer;
 
 
 import java.nio.ByteBuffer;
@@ -9,11 +9,11 @@ import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.httpStatus.HttpStatusCode;
 
 
-public class Response {
+public class ServletWriter {
 
     private final WritableByteChannel writer;
 
-    public Response(WritableByteChannel writer) {
+    public ServletWriter(WritableByteChannel writer) {
         this.writer = writer;
     }
 

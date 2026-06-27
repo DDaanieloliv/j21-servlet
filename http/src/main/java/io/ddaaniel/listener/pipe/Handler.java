@@ -1,13 +1,13 @@
 package io.ddaaniel.listener.pipe;
 
 
-import io.ddaaniel.internal.parser.request.Request;
-import io.ddaaniel.internal.parser.response.Response;
+import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 
 @FunctionalInterface
 public interface Handler {
-    void handle(Request req, Response res);
+    void handle(ServletReader r, ServletWriter w);
 }
 
 

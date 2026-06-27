@@ -7,15 +7,15 @@ import java.nio.file.StandardOpenOption;
 
 import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.Request;
-import io.ddaaniel.internal.parser.response.Response;
+import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 /**
  * VideoStreamHandler
  */
 public abstract class VideoStreamHandler {
 
-	public static void handleVideoStreaming(Request req, HttpHeaders headers, Response res) throws Exception {
+	public static void handleVideoStreaming(ServletReader reader, HttpHeaders headers, ServletWriter writer) throws Exception {
 		var videoPath = Path
 				.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/main/java/io/ddaaniel/assets/video.mp4");
 		try (FileChannel fileChannel = FileChannel.open(videoPath, StandardOpenOption.READ)) {
@@ -24,15 +24,15 @@ public abstract class VideoStreamHandler {
 			headers.set("content-length", String.valueOf(fileSize));
 			headers.set("transfer-encoding", "chunked");
 
-			res.WriteStatusLine(HttpStatus.OK);
-			res.WriteHeaders(headers);
+			writer.WriteStatusLine(HttpStatus.OK);
+			writer.WriteHeaders(headers);
 
 			var buffer = ByteBuffer.allocate(8192);
 			while (fileChannel.read(buffer) > 0) {
 				buffer.flip();
 				var rawBytes = new byte[buffer.remaining()];
 				buffer.get(rawBytes);
-				res.WriteBody(rawBytes);
+				writer.WriteBody(rawBytes);
 				buffer.clear();
 			}
 		}

@@ -12,7 +12,7 @@ public class Main {
 		var keepAliveLatch = new CountDownLatch(1);
 
 		try {
-			var s = new Servlet().handleConnection(port);
+			var s = new Servlet().bind(port);
 
 			System.out.println(" -> Server started on port 42069 ");
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {

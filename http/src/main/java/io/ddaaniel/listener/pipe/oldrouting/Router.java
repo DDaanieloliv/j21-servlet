@@ -3,9 +3,9 @@ package io.ddaaniel.listener.pipe.oldrouting;
 
 import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.Request;
-import io.ddaaniel.internal.parser.response.Response;
+import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
+import io.ddaaniel.internal.parser.writer.ServletWriter;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.HttpBinHandler;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.MyProblemHandler;
 import io.ddaaniel.listener.pipe.oldrouting.handlers.VideoStreamHandler;
@@ -16,48 +16,48 @@ import io.ddaaniel.listener.pipe.oldrouting.handlers.YourProblemHandler;
  */
 public abstract class Router {
 
-	public static void route(Request req, Response res) {
-		var target = req.uriWrap;
-		var headers = res.DefaultHeaders(0);
+	public static void route(ServletReader reader, ServletWriter writer) {
+		var target = reader.uriWrap;
+		var headers = writer.DefaultHeaders(0);
 
 		try {
 			switch (target) {
-				case "/video" -> VideoStreamHandler.handleVideoStreaming(req, headers, res);
-				case "/yourproblem" -> YourProblemHandler.handleYourProblem(req, headers, res);
-				case "/myproblem" -> MyProblemHandler.handleMyProblem(req, headers, res);
-				case "/httpbin/stream" -> HttpBinHandler.HttpStreamRes(req, headers, res); 
-				default ->  handleNotFound(req, headers, res);
+				case "/video" -> VideoStreamHandler.handleVideoStreaming(reader, headers, writer);
+				case "/yourproblem" -> YourProblemHandler.handleYourProblem(reader, headers, writer);
+				case "/myproblem" -> MyProblemHandler.handleMyProblem(reader, headers, writer);
+				case "/httpbin/stream" -> HttpBinHandler.HttpStreamRes(reader, headers, writer); 
+				default ->  handleNotFound(reader, headers, writer);
 			}
 		} catch (Exception e) {
 			if (e instanceof java.io.IOException || (e.getCause() != null && e.getCause() instanceof java.io.IOException)) {
 				System.out.println(" -> Client close the connection prematurely (Pipe Broken).");
 			} else {
-				handleInternalError(headers, res, e);
+				handleInternalError(headers, writer, e);
 			}
 		}
 	}
 
 
 
-	private static void handleNotFound(Request req, HttpHeaders headers, Response res) throws Exception {
+	private static void handleNotFound(ServletReader reader, HttpHeaders headers, ServletWriter writer) throws Exception {
 		var errBody = FunHttp.respond404().getBytes();
 		headers.set("Content-Length", String.valueOf(errBody.length));
 		headers.set("Content-Type", "text/html");
 
-		res.WriteStatusLine(HttpStatus.NOT_FOUND);
-		res.WriteHeaders(headers);
-		res.WriteBody(errBody);
+		writer.WriteStatusLine(HttpStatus.NOT_FOUND);
+		writer.WriteHeaders(headers);
+		writer.WriteBody(errBody);
 	}
 
-	private static void handleInternalError(HttpHeaders headers, Response res, Exception err) {
+	private static void handleInternalError(HttpHeaders headers, ServletWriter writer, Exception err) {
 		System.err.println(" -> Global Router Error: " + err.getMessage());
 		try {
 			var errBody = FunHttp.respond500().getBytes();
 			headers.set("Content-Length", String.valueOf(errBody.length));
 			headers.set("Content-Type", "text/html");
-			res.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
-			res.WriteHeaders(headers);
-			res.WriteBody(errBody);
+			writer.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
+			writer.WriteHeaders(headers);
+			writer.WriteBody(errBody);
 		} catch (Exception critical) {
 			critical.printStackTrace();
 		}

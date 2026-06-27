@@ -11,16 +11,16 @@ import java.util.HexFormat;
 
 import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.request.Request;
-import io.ddaaniel.internal.parser.response.Response;
+import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 /**
  * HttpBin
  */
 public abstract class HttpBinHandler {
 
-	public static void HttpStreamRes(Request req, HttpHeaders headers, Response res) throws Exception {
-		var target = req.uriWrap;
+	public static void HttpStreamRes(ServletReader reader, HttpHeaders headers, ServletWriter writer) throws Exception {
+		var target = reader.uriWrap;
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()
 			.uri(URI.create("https://httpbin.org" + target.substring("/httpbin".length())))
@@ -32,12 +32,12 @@ public abstract class HttpBinHandler {
 
 		if (originalContentLength == null || target.contains("/stream")) {
 
-			res.WriteStatusLine(HttpStatus.OK);
+			writer.WriteStatusLine(HttpStatus.OK);
 			headers.remove("Content-Length");
 			headers.set("Transfer-Encoding", "chunked");
 			headers.set("Content-Type", "text/plain");
 			headers.set("Trailer", "X-Content-SHA256, X-Content-Length");
-			res.WriteHeaders(headers);
+			writer.WriteHeaders(headers);
 
 			var fullBody = new ByteArrayOutputStream();
 			InputStream bodyStream = resOut.body();
@@ -48,15 +48,15 @@ public abstract class HttpBinHandler {
 				fullBody.write(data, 0, n);
 
 				var hexSize = Integer.toHexString(n) + "\r\n";
-				res.WriteBody(hexSize.getBytes());
+				writer.WriteBody(hexSize.getBytes());
 
 				var chunkData = new byte[n];
 				System.arraycopy(data, 0, chunkData, 0, n);
-				res.WriteBody(chunkData);
-				res.WriteBody("\r\n".getBytes());
+				writer.WriteBody(chunkData);
+				writer.WriteBody("\r\n".getBytes());
 			}
 
-			res.WriteBody("0\r\n".getBytes()); 
+			writer.WriteBody("0\r\n".getBytes()); 
 
 			var finalPayload = fullBody.toByteArray();
 			var digest = MessageDigest.getInstance("SHA-256");
@@ -67,12 +67,12 @@ public abstract class HttpBinHandler {
 				"X-Content-Length: " + finalPayload.length + "\r\n" +
 				"\r\n";
 
-			res.WriteBody(trailersBlock.getBytes());
+			writer.WriteBody(trailersBlock.getBytes());
 			return;
 
 		} 
 		else {
-			res.WriteStatusLine(HttpStatus.OK);
+			writer.WriteStatusLine(HttpStatus.OK);
 
 			headers.set("Content-Length", originalContentLength);
 			var originalContentType = resOut.headers().firstValue("Content-Type").orElse("text/html");
@@ -81,7 +81,7 @@ public abstract class HttpBinHandler {
 			headers.remove("Transfer-Encoding");
 			headers.remove("Trailer");
 
-			res.WriteHeaders(headers);
+			writer.WriteHeaders(headers);
 
 			InputStream bodyStream = resOut.body();
 			int n;
@@ -91,7 +91,7 @@ public abstract class HttpBinHandler {
 
 				byte[] rawData = new byte[n];
 				System.arraycopy(buffer, 0, rawData, 0, n);
-				res.WriteBody(rawData);
+				writer.WriteBody(rawData);
 			}
 			return;
 		}

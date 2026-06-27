@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.request;
+package io.ddaaniel.internal.parser.reader;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
@@ -9,15 +9,15 @@ import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
 import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.parser.request.state.ParsingState;
+import io.ddaaniel.internal.parser.reader.state.ParsingState;
 import io.ddaaniel.internal.parser.util.Util;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 
 /**
- * Request
+ * ServletReader
  */
-public class Request extends HttpHeaders {
+public class ServletReader extends HttpHeaders {
 
 	public final ReadableByteChannel conn;
 
@@ -27,11 +27,11 @@ public class Request extends HttpHeaders {
 
 	public ParsingState State = ParsingState.STATE_INIT;
 
-	public Request(ReadableByteChannel conn) {
+	public ServletReader(ReadableByteChannel conn) {
 		this.conn = conn;
 	}
 
-	public int parseRequestLine(ByteBuffer bytes, Request requestWrap) {
+	public int parseRequestLine(ByteBuffer bytes, ServletReader requestWrap) {
 		var read = 0;
 		var SEPARATOR = "\r\n";
 		var START = bytes.position();
@@ -115,7 +115,7 @@ public class Request extends HttpHeaders {
 	} 
 
 
-	private Integer Parse(ByteBuffer buf, Request req) throws Exception {
+	private Integer Parse(ByteBuffer buf, ServletReader req) throws Exception {
 		var read = 0;
 		outer:
 		for (;;) {
@@ -172,9 +172,9 @@ public class Request extends HttpHeaders {
 		return read;
 	}
 
-	public Request RequestFromReader() {
-		var reader = this.conn;
-		var request = new Request(this.conn);
+	public ServletReader RequestFromReader() {
+		var reader = conn;
+		var request = new ServletReader(conn);
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
 
