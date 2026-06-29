@@ -74,7 +74,7 @@ public class Servlet {
 		listener.bind(new InetSocketAddress(port));
 		s.closed = false;
 		s.handler = handler;
-		executor.submit(() -> { runServer(listener); } );
+		executor.submit(() -> { runServer(listener); });
 		return this;
 	}
 

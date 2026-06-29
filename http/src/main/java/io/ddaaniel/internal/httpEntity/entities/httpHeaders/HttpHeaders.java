@@ -1,5 +1,6 @@
 package io.ddaaniel.internal.httpEntity.entities.httpHeaders;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -235,6 +236,46 @@ public class HttpHeaders {
 	 */
 	public String getFirst(String headerName) {
 		return this.headers.computeIfPresent(headerName.toLowerCase(), (k, v) -> v).getFirst();
+	}
+
+	/**
+	 * Return the value of the {@code Host} header, if available.
+	 * <p>If the header value does not contain a port, the
+	 * {@linkplain InetSocketAddress#getPort() port} in the returned address will
+	 * be {@code 0}.
+	 */
+	public InetSocketAddress getHost() {
+		String value = getFirst(HOST);
+		if (value == null) {
+			return null;
+		}
+
+		String host = null;
+		int port = 0;
+		int separator = (value.startsWith("[") ? value.indexOf(':', value.indexOf(']')) : value.lastIndexOf(':'));
+		if (separator != -1) {
+			host = value.substring(0, separator);
+			String portString = value.substring(separator + 1);
+			try {
+				port = Integer.parseInt(portString);
+			}
+			catch (NumberFormatException ignored) {
+			}
+		}
+
+		if (host == null) {
+			host = value;
+		}
+		return InetSocketAddress.createUnresolved(host, port);
+	}
+
+	/**
+	 * Return the list of acceptable {@linkplain MediaType media types},
+	 * as specified by the {@code Accept} header.
+	 * <p>Returns an empty list when the acceptable media types are unspecified.
+	 */
+	public List<String> getAccept() {
+		return get(ACCEPT);
 	}
 
 	/**

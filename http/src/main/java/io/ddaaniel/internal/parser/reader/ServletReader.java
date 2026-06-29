@@ -1,5 +1,8 @@
 package io.ddaaniel.internal.parser.reader;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -19,16 +22,40 @@ import io.vavr.Tuple2;
  */
 public class ServletReader extends HttpHeaders {
 
-	public final ReadableByteChannel conn;
+	public final ReadableByteChannel stream;
+	public ParsingState State = ParsingState.STATE_INIT;
 
 	public String uriWrap;
 	public String methodWrap;
-	public long readSoFar;
+	public InputStream bodyWrap;
 
-	public ParsingState State = ParsingState.STATE_INIT;
+	public ServletReader(ReadableByteChannel stream) {
+		this.stream = stream;
+	}
 
-	public ServletReader(ReadableByteChannel conn) {
-		this.conn = conn;
+	public InputStream getBody() {
+		if (this.bodyWrap == null) {
+			return new ByteArrayInputStream(new byte[0]);
+		}
+		return this.bodyWrap;
+	}
+
+	public String getBodyAsString() {
+		if (this.bodyWrap == null) {
+			return "";
+		}
+
+		try (var result = new java.io.ByteArrayOutputStream()) {
+			byte[] buffer = new byte[512];
+			int length;
+			while ((length = this.bodyWrap.read(buffer)) != -1) {
+				result.write(buffer, 0, length);
+			}
+
+			return result.toString(StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			throw new RuntimeException(" -> Error when reading the body ", e);
+		}
 	}
 
 	public int parseRequestLine(ByteBuffer bytes, ServletReader requestWrap) {
@@ -141,29 +168,11 @@ public class ServletReader extends HttpHeaders {
 					var done = parsedHeader._2;
 					if (totalReadH == 0) break outer;
 					read += totalReadH;
-					if (done) req.State = ParsingState.STATE_BODY;
-					break;
-
-				case STATE_BODY:
-					var length = (req.getContentLength() != -1) ? req.getContentLength() : 0;
-					if (length == 0) {
-						req.State = ParsingState.STATE_DONE;
-						break;
-					}
-					long alreadyRead = req.readSoFar;
-					long stillMissing = length - alreadyRead;
-					int available = buf.remaining();
-					long remaining = Math.min(stillMissing, available);
-					if (remaining > 0) {
-						var chunk = new byte[(int) remaining];
-						buf.get(chunk);
-						req.readSoFar += remaining;
-						read += remaining;
-					}
-					if (req.readSoFar == length) {
+					if (done) {
+						long length = (req.getContentLength() != -1) ? req.getContentLength() : 0;
+						req.bodyWrap = new HttpBodyInputStream(req.stream, buf, length);
 						req.State = ParsingState.STATE_DONE;
 					}
-					else break outer;
 					break;
 				default: 
 					throw new Exception("Somehow its go wrong");
@@ -173,13 +182,13 @@ public class ServletReader extends HttpHeaders {
 	}
 
 	public ServletReader RequestFromReader() {
-		var reader = conn;
-		var request = new ServletReader(conn);
+		var reader = stream;
+		var request = new ServletReader(stream);
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
 
 		try {
-			while (request.State == ParsingState.STATE_DONE || request.State == ParsingState.STATE_ERROR) {
+			while (request.State != ParsingState.STATE_DONE && request.State != ParsingState.STATE_ERROR) {
 				var read = reader.read(buf);
 				if (read == -1) {
 					if (request.State != ParsingState.STATE_DONE) {
@@ -191,6 +200,10 @@ public class ServletReader extends HttpHeaders {
 				buf.flip();
 				fliped = true;
 				Parse(buf, request);
+				if (request.State == ParsingState.STATE_DONE) {
+                    fliped = false;
+                    break; 
+                }
 
 				if (buf.remaining() == buf.capacity()) {
 					request.State = ParsingState.STATE_ERROR;

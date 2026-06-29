@@ -1,4 +1,4 @@
-package io.ddaaniel.request.mocks;
+package io.ddaaniel.reader.mocks;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;

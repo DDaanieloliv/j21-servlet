@@ -1,11 +1,11 @@
-package io.ddaaniel.request;
+package io.ddaaniel.reader;
 
 import org.junit.jupiter.api.Test;
 
 import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedHeaderException;
-import io.ddaaniel.internal.parser.request.Requests;
-import io.ddaaniel.request.mocks.ChunkReader;
+import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.reader.mocks.ChunkReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -13,9 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 
 /**
- * A simple Request_Test
+ * A simple Reader_Test
  */
-public class Request_Test {
+public class Reader_Test {
 
 	/**
 	 * Rigorous Test :-)
@@ -24,21 +24,19 @@ public class Request_Test {
 	public void TestRequestLineParse() {
 		// Test: Good GET Request line without path
 		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
-		var reader = new ChunkReader(bytes, 2);
-		var request = new Requests().RequestFromReader(reader);
+		var conn = new ChunkReader(bytes, 2);
+		var reader = new ServletReader(conn).RequestFromReader();
 
-		assertEquals("GET", request.RequestLine.Method);
-		assertEquals("/", request.RequestLine.RequestTarget);
-		assertEquals("1.1", request.RequestLine.HttpVersion);
+		assertEquals("GET", reader.methodWrap);
+		assertEquals("/", reader.uriWrap);
 
 		// Test: Good GET Request line with path
 		bytes = "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
-		reader = new ChunkReader(bytes, 2);
-		request = new Requests().RequestFromReader(reader);
+		conn = new ChunkReader(bytes, 2);
+		reader = new ServletReader(conn).RequestFromReader();
 
-		assertEquals("GET", request.RequestLine.Method);
-		assertEquals("/coffee", request.RequestLine.RequestTarget);
-		assertEquals("1.1", request.RequestLine.HttpVersion);
+		assertEquals("GET", reader.methodWrap);
+		assertEquals("/coffee", reader.uriWrap);
 	}
 
 	/**
@@ -48,19 +46,19 @@ public class Request_Test {
 	public void TestParseHeaders() {
 		// Test: Standard Headers
 		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
-		var reader = new ChunkReader(bytes, 3);
-		var request = new Requests().RequestFromReader(reader);
+		var conn = new ChunkReader(bytes, 3);
+		var reader = new ServletReader(conn).RequestFromReader();
 
-		assertNotNull(request);
-		assertEquals("localhost:42069", request.Headers.Get("host"));
-		assertEquals("curl/8.20.0", request.Headers.Get("user-agent"));
-		assertEquals("*/*", request.Headers.Get("accept"));
+		assertNotNull(reader);
+		assertEquals("localhost:42069", reader.getHost());
+		assertEquals("curl/8.20.0", reader.getFirst("user-agent"));
+		assertEquals("*/*", reader.getAccept().getFirst());
 
 		// Test: Malformed Header
 		bytes = "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".getBytes();
-		var readerErr = new ChunkReader(bytes, 3);
+		var connErr = new ChunkReader(bytes, 3);
 		var err = assertThrowsExactly(MalformedHeaderException.class, () -> {
-			new Requests().RequestFromReader(readerErr);
+			new ServletReader(connErr).RequestFromReader();
 		});
 		assertEquals(" -> malformed header-name ", err.getMessage());
 	}
@@ -76,10 +74,10 @@ public class Request_Test {
 			"Content-Length: 13\r\n" +
 			"\r\n" +
 			"hello world!\n").getBytes();
-		var reader = new ChunkReader(data, 3);
-		var request = new Requests().RequestFromReader(reader);
-		assertNotNull(request);
-		assertEquals("hello world!\n", new String(request.Body));
+		var conn = new ChunkReader(data, 3);
+		var reader = new ServletReader(conn).RequestFromReader();
+		assertNotNull(reader);
+		assertEquals("hello world!\n", new String(reader.getBodyAsString()));
 
 
 		// Test: Body shorter than reported content length
@@ -90,7 +88,7 @@ public class Request_Test {
 			"partial content").getBytes();
 		var badReader = new ChunkReader(badData, 3);
 		var err = assertThrowsExactly(MalformedBodyException.class, () -> {
-			new Requests().RequestFromReader(badReader); 
+			new ServletReader(badReader).RequestFromReader(); 
 		});
 		assertEquals(" -> body shorter than reported content-length ", err.getMessage());
 	}
