@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.parser.util.serializer;
+package io.ddaaniel.internal.support.serializer;
 
 
 import java.io.IOException;

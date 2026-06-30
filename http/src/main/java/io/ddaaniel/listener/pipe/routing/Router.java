@@ -4,10 +4,10 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
+import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 
-import io.ddaaniel.internal.httpEntity.entities.ResponseEntity;
-import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.httpStatus.HttpStatus;
 
 
 

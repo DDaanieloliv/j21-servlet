@@ -5,10 +5,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 
 /**
  * VideoStreamHandler

@@ -1,4 +1,4 @@
-package io.ddaaniel.util;
+package io.ddaaniel.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -6,28 +6,29 @@ import java.nio.ByteBuffer;
 
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.internal.parser.util.Util;
+import io.ddaaniel.internal.support.collectionUtil.CollectionUtil;
+
 
 /**
- * A simple Util_Test
+ * A simple CollectionUtil_Test
  */
-public class Util_Test {
+public class CollectionUtil_Test {
 
 	@Test
 	public void assertingIsIndexOf() throws Exception {
 		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
 		var string = "hhh";
-		var result = Util.IndexOf(source, string, 0);
+		var result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(7, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
 		string = "hhh";
-		result = Util.IndexOf(source, string, 0);
+		result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(20, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
 		string = "hhh";
-		result = Util.IndexOf(source, string, 0);
+		result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(-1, result);
 	}
 
@@ -35,17 +36,17 @@ public class Util_Test {
 	public void assertingIsIndexOfBuf() throws Exception {
 		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
 		var string = "hhh";
-		var result = Util.IndexOf(source, string, 0);
+		var result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(7, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
 		string = "hhh";
-		result = Util.IndexOf(source, string, 0);
+		result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(20, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
 		string = "hhh";
-		result = Util.IndexOf(source, string, 0);
+		result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(-1, result);
 	}
 
@@ -53,17 +54,17 @@ public class Util_Test {
 	public void assertingIsIndexOfArr() throws Exception {
 		var source = "AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes();
 		var string = "hhh";
-		var result = Util.IndexOf(source, string, 0);
+		var result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(7, result);
 
 		source = "AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes();
 		string = "hhh";
-		result = Util.IndexOf(source, string, 0);
+		result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(20, result);
 
 		source = "AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes();
 		string = "hhh";
-		result = Util.IndexOf(source, string, 0);
+		result = CollectionUtil.IndexOf(source, string, 0);
 		assertEquals(-1, result);
 	}
 
@@ -71,12 +72,12 @@ public class Util_Test {
 	public void assertingCountPatternsCorrectly() throws Exception {
 		var source = "AbChhdEfGhhhhIjKlMnOphhQrStUvWxYz".getBytes();
 		var string = "hh";
-		var result = Util.count(source, string);
+		var result = CollectionUtil.count(source, string);
 		assertEquals(4, result);
 
 		source = "AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYhhhzhhh".getBytes();
 		string = "hhh";
-		result = Util.count(source, string);
+		result = CollectionUtil.count(source, string);
 		assertEquals(4, result);
 	}
 
@@ -87,7 +88,7 @@ public class Util_Test {
 		var source = "AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes();
 		var string = "hhh";
 		var times = 3;
-		var returns = Util.Split(source, string, times);
+		var returns = CollectionUtil.Split(source, string, times);
 
 		assertEquals(times, returns.length);
 		assertEquals("AbCdEfG", new String(returns[0]));
@@ -102,7 +103,7 @@ public class Util_Test {
 		var source = "AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYhhhzhhh".getBytes();
 		var string = "hhh";
 		var times = -1;
-		var returns = Util.Split(source, string, times);
+		var returns = CollectionUtil.Split(source, string, times);
 
 		assertEquals(returns.length, 5);
 		assertEquals(new String(returns[0]), "AbCdEfG");
@@ -117,7 +118,7 @@ public class Util_Test {
 	@Test
 	public void assertingTrimSpaces() throws Exception {
 		var arr = "   AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz   ".getBytes();
-		var result = Util.TrimSpace(arr);
+		var result = CollectionUtil.TrimSpace(arr);
 		assertEquals("AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz", new String(result));
 	}
 
@@ -127,12 +128,12 @@ public class Util_Test {
 	public void assertingHasSuffix() throws Exception {
 		var arr = "   AbCdEfGhIjK  lMnOpQhrStUvWxYz   ".getBytes();
 		var slice = "  ".getBytes();
-		var result = Util.HasSuffix(arr, slice);
+		var result = CollectionUtil.HasSuffix(arr, slice);
 		assertEquals(true, result);
 
 		arr = "   AbCdEfGhIjK  lMnOpQhrStUvWxYz ".getBytes();
 		slice = "  ".getBytes();
-		result = Util.HasSuffix(arr, slice);
+		result = CollectionUtil.HasSuffix(arr, slice);
 		assertEquals(false, result);
 	}
 }

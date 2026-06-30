@@ -4,9 +4,10 @@ package io.ddaaniel.internal.parser.writer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
-import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.httpStatus.HttpStatus;
-import io.ddaaniel.internal.httpStatus.HttpStatusCode;
+import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.internal.support.httpStatus.HttpStatus;
+import io.ddaaniel.internal.support.httpStatus.HttpStatusCode;
+
 
 
 public class ServletWriter {

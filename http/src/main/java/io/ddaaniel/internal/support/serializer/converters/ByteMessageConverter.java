@@ -1,7 +1,6 @@
-package io.ddaaniel.internal.parser.util.serializer.converters;
+package io.ddaaniel.internal.support.serializer.converters;
 
-
-import io.ddaaniel.internal.parser.util.serializer.MessageSerializer;
+import io.ddaaniel.internal.support.serializer.MessageSerializer;
 
 public class ByteMessageConverter implements MessageSerializer {
 

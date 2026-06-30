@@ -1,11 +1,12 @@
-package io.ddaaniel.internal.parser.util.serializer;
+package io.ddaaniel.internal.support.serializer;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.ddaaniel.internal.parser.util.serializer.converters.ByteMessageConverter;
-import io.ddaaniel.internal.parser.util.serializer.converters.StringMessageSerializer;
+import io.ddaaniel.internal.support.serializer.converters.ByteMessageConverter;
+import io.ddaaniel.internal.support.serializer.converters.StringMessageSerializer;
+
 
 public class SerializationManager {
 

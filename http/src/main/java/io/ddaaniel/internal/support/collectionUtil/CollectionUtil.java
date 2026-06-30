@@ -1,12 +1,12 @@
-package io.ddaaniel.internal.parser.util;
+package io.ddaaniel.internal.support.collectionUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- * Util
+ * CollectionUtil
  */
-public class Util {
+public class CollectionUtil {
 
 	public  static int IndexOf(ByteBuffer source, String string, int start) {
 		var i = start;

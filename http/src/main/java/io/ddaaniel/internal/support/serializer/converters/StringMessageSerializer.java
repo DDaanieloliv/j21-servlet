@@ -1,8 +1,9 @@
-package io.ddaaniel.internal.parser.util.serializer.converters;
+package io.ddaaniel.internal.support.serializer.converters;
 
 import java.nio.charset.StandardCharsets;
 
-import io.ddaaniel.internal.parser.util.serializer.MessageSerializer;
+import io.ddaaniel.internal.support.serializer.MessageSerializer;
+
 
 public class StringMessageSerializer implements MessageSerializer {
 

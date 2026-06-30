@@ -1,10 +1,10 @@
 package io.ddaaniel.listener.pipe.oldrouting.handlers;
 
-import io.ddaaniel.internal.httpEntity.entities.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.ServletReader;
-import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.internal.support.HttpFun.FunHttp;
+import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 
 /**
  * MyProblemHandler

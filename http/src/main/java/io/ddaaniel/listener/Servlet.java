@@ -6,11 +6,11 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import io.ddaaniel.internal.httpEntity.entities.ResponseEntity;
-import io.ddaaniel.internal.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
-import io.ddaaniel.internal.parser.util.HttpFun.FunHttp;
+import io.ddaaniel.internal.support.HttpFun.FunHttp;
+import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
+import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
 import io.ddaaniel.listener.pipe.routing.Router;
@@ -84,7 +84,7 @@ public class Servlet {
 			var writer = new ServletWriter(conn);
 			var headers = writer.DefaultHeaders(0);
 			try {
-				reader.RequestFromReader();
+				reader.ProcessRequest();
 			} catch (Exception err) { 
 				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);
 				writer.WriteHeaders(headers);

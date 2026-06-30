@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.httpStatus;
+package io.ddaaniel.internal.support.httpStatus;
 
 
 /**

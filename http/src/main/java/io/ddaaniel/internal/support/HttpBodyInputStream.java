@@ -1,9 +1,11 @@
-package io.ddaaniel.internal.parser.reader;
+package io.ddaaniel.internal.support;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+
+import io.ddaaniel.internal.exception.MalformedBodyException;
 
 public class HttpBodyInputStream extends InputStream {
     private final ReadableByteChannel channel;
@@ -23,14 +25,17 @@ public class HttpBodyInputStream extends InputStream {
             return -1;
         }
 
-        if (!buf.hasRemaining()) {
-            buf.clear();
-            int read = channel.read(buf);
-            if (read == -1) {
-                return -1;
-            }
-            buf.flip();
-        }
+		if (!buf.hasRemaining()) {
+			buf.clear();
+			int read = channel.read(buf);
+			if (read == -1) {
+				if (bytesReadSoFar < contentLength) {
+					throw new MalformedBodyException(" -> body shorter than reported content-length ");
+				}
+				return -1;
+			}
+			buf.flip();
+		}
 
         int singleByte = buf.get() & 0xFF;
         bytesReadSoFar++;
@@ -46,12 +51,17 @@ public class HttpBodyInputStream extends InputStream {
         long stillMissing = contentLength - bytesReadSoFar;
         int maxToRead = Math.min(len, (int) stillMissing);
 
-        if (!buf.hasRemaining()) {
-            buf.clear();
-            int read = channel.read(buf);
-            if (read == -1) return -1;
-            buf.flip();
-        }
+		if (!buf.hasRemaining()) {
+			buf.clear();
+			int read = channel.read(buf);
+			if (read == -1) {
+				if (bytesReadSoFar < contentLength) {
+					throw new MalformedBodyException(" -> body shorter than reported content-length ");
+				}
+				return -1;
+			}
+			buf.flip();
+		}
 
         int toCopy = Math.min(maxToRead, buf.remaining());
         buf.get(b, off, toCopy);

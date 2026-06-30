@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.httpEntity.entities.httpHeaders;
+package io.ddaaniel.internal.support.httpEntity.httpHeaders;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -150,7 +150,7 @@ public class HttpHeaders {
 	 * @param headerName the header name
 	 */
 	public boolean containsHeader(String headerName) {
-		return this.headers.containsKey(headerName);
+		return this.headers.containsKey(headerName.toLowerCase());
 	}
 
 	/**
@@ -158,7 +158,7 @@ public class HttpHeaders {
 	 * @param headerName the header name
 	 */
 	public List<String> get(String headerName) {
-		return this.headers.get(headerName);
+		return this.headers.get(headerName.toLowerCase());
 	}
 
 	/**
@@ -170,7 +170,8 @@ public class HttpHeaders {
 	 * @see #set(String, String)
 	 */
 	public void add(String headerName, String headerValue) {
-		this.headers.computeIfAbsent(headerName, (k) -> new ArrayList<>()).add(headerValue);
+		var headersKey = headerName.toLowerCase();
+		this.headers.computeIfAbsent(headersKey, (k) -> new ArrayList<>()).add(headerValue);
 	}
 
 	/**
@@ -184,7 +185,7 @@ public class HttpHeaders {
 	public void set(String headerName, String headerValue) {
 		List<String> headerList = new ArrayList<>(1);
 		headerList.add(headerValue);
-		this.headers.put(headerName, headerList);
+		this.headers.put(headerName.toLowerCase(), headerList);
 	}
 
 	/**
@@ -194,7 +195,7 @@ public class HttpHeaders {
 	 * @return the value list associated with the removed header name or {@code null}
 	 */
 	public List<String> remove(String key) {
-		return this.headers.remove(key);
+		return this.headers.remove(key.toLowerCase());
 	}
 
 	/**
@@ -235,7 +236,9 @@ public class HttpHeaders {
 	 * @return the first header value, or {@code null} if none
 	 */
 	public String getFirst(String headerName) {
-		return this.headers.computeIfPresent(headerName.toLowerCase(), (k, v) -> v).getFirst();
+		List<String> values = this.headers.get(headerName.toLowerCase());
+		if (values == null || values.isEmpty()) return null;
+		return values.getFirst();
 	}
 
 	/**
