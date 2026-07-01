@@ -41,7 +41,7 @@ public class Servlet {
 		var referenceRouter = new Router();
 		var s = new Servlet().dispatch(port, (reader, writer) -> {
 			try {
-				String target = reader.uriWrap;
+				String target = reader.uriWrap != null ? reader.uriWrap : "";
 				ResponseEntity<?> response = referenceRouter.dispatch(target);
 
 				if (response != null) {
@@ -52,8 +52,9 @@ public class Servlet {
 					writer.WriteHeaders(headersMap);
 					writer.WriteBody(body.getBytes());
 				} else {
+					byte[] errorBody = FunHttp.respond404().getBytes();
 					writer.WriteStatusLine(HttpStatus.NOT_FOUND);
-					writer.WriteHeaders(writer.DefaultHeaders(0));
+					writer.WriteHeaders(writer.DefaultHeaders(errorBody.length));
 					writer.WriteBody(FunHttp.respond404().getBytes());
 				}
 			} catch (Exception e) {
@@ -82,12 +83,12 @@ public class Servlet {
 		try (conn) {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
-			var headers = writer.DefaultHeaders(0);
 			try {
-				reader.ProcessRequest();
+				reader = reader.ProcessRequest();
 			} catch (Exception err) { 
+				var badRequestHeaders = writer.DefaultHeaders(0);
 				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);
-				writer.WriteHeaders(headers);
+				writer.WriteHeaders(badRequestHeaders);
 				return;
 			}
 			server.handler.handle(reader, writer);

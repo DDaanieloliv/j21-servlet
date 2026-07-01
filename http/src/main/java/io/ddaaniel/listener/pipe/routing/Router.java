@@ -14,15 +14,16 @@ import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 public class Router {
     private final Map<String, Supplier<Object>> compiledTable;
 
-    @SuppressWarnings("unchecked")
+    //@SuppressWarnings("unchecked")
     public Router() {
-        try {
-            Class<?> table = Class.forName("io.ddaaniel.generated.RouteTable");
-            Method method = table.getMethod("table");
-            this.compiledTable = (Map<String, Supplier<Object>>) method.invoke(null);
-        } catch (Exception e) {
-            throw new RuntimeException("Error on initialize the table router", e);
-        }
+		this.compiledTable = io.ddaaniel.generated.RouteTable.table();
+        // try {
+        //     Class<?> table = Class.forName("io.ddaaniel.generated.RouteTable");
+        //     Method method = table.getMethod("table");
+        //     this.compiledTable = (Map<String, Supplier<Object>>) method.invoke(null);
+        // } catch (Exception e) {
+        //     throw new RuntimeException("Error on initialize the table router", e);
+        // }
     }
 
 	public ResponseEntity<?> dispatch(String targetPath) throws Exception {

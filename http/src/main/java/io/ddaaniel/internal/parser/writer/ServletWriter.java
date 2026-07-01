@@ -57,7 +57,7 @@ public class ServletWriter {
 				for (String str : value) {
 					string.append(String.format(" %s", str)); 
 				}
-                string.append("%s \r\n"); 
+                string.append("\r\n"); 
             });
             string.append("\r\n");
             
