@@ -21,17 +21,24 @@ import io.vavr.Tuple2;
 /**
  * ServletReader
  */
-public class ServletReader extends HttpHeaders {
+public class ServletReader {
 
 	public final ReadableByteChannel stream;
+
 	public ParsingState State = ParsingState.STATE_INIT;
 
+	public HttpHeaders header;
+
 	public String uriWrap;
+
 	public String methodWrap;
+
 	private InputStream bodyWrap;
+
 
 	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
+		this.header = new HttpHeaders();
 	}
 
 	public InputStream getBody() {
@@ -67,8 +74,7 @@ public class ServletReader extends HttpHeaders {
 		if (EOL == -1) return read;
 		var lineBytes = new byte[EOL - START];
 		bytes.get(lineBytes); 
-		bytes.get();
-		bytes.get();
+		bytes.position(bytes.position() + SEPARATOR.length());
 
 		read += (bytes.position() - START);
 		var startLine = new String(lineBytes, StandardCharsets.UTF_8);
@@ -88,11 +94,12 @@ public class ServletReader extends HttpHeaders {
 
 		requestWrap.methodWrap = parts[0];
 		requestWrap.uriWrap = parts[1];
+		requestWrap.State = ParsingState.STATE_HEADERS;
 		return read;
 	}
 
-	private Tuple2<Integer, Boolean> ParseHeader(ByteBuffer data) { 
-		var read = 0; 
+
+	private Boolean ParseHeader(ByteBuffer data) { 
 		var done = false;
 		var START = data.position();
 		var SEPARATOR = "\r\n";
@@ -105,88 +112,62 @@ public class ServletReader extends HttpHeaders {
 			if (EOL - START == 0) {
 				data.position(EOL + SEPARATOR.length());
 				done = true;
-				read += SEPARATOR.length();
 				break;
 			}
 			var headerline = new byte[EOL - START];
 			data.get(headerline);
-			data.get();
-			data.get();
-			var option = ParseFieldLine(headerline);
-			var name = option._1;
-			var value = option._2;
+			data.position(data.position() + SEPARATOR.length());
 
-			if (!CollectionUtil.isToken(name.getBytes())) {
-				throw new MalformedHeaderException(" -> malformed header-name ");
+			var parts = CollectionUtil.Split(headerline, ":", 2);
+			if (parts.length != 2) {
+				throw new MalformedHeaderException(" -> malformed field-line ");
 			}
-			set(name, value);
-			read += (EOL - START) + SEPARATOR.length();
+			var name = parts[0];
+			var value = CollectionUtil.TrimSpace(parts[1]);
+			if (CollectionUtil.HasSuffix(name, " ".getBytes())) {
+				throw new MalformedHeaderException(" -> malformed field-name ");
+			}
+
+			if (!CollectionUtil.isToken(name)) {
+			  throw new MalformedHeaderException(" -> malformed header-name ");
+			}
+			header.set(new String(name), new String(value));
 			START = data.position();
 		}
-
-		return Tuple.of(read, done);
+		if (done) {
+			long length = (this.header.getContentLength() != -1) ? this.header.getContentLength() : 0;
+			this.bodyWrap = new HttpBodyInputStream(this.stream, data, length);
+			this.State = ParsingState.STATE_DONE;
+		}
+		return done;
 	}
 
-	private Tuple2<String, String> ParseFieldLine(byte[] h) {
-		var parts = CollectionUtil.Split(h, ":", 2);
-		if (parts.length != 2) {
-			throw new MalformedHeaderException(" -> malformed field-line ");
-		}
-
-		var name = parts[0];
-		var value = CollectionUtil.TrimSpace(parts[1]);
-		if (CollectionUtil.HasSuffix(name, " ".getBytes())) {
-			throw new MalformedHeaderException(" -> malformed field-name ");
-		}
-		return Tuple.of(new String(name), new String(value));
-	} 
-
-
-	private Integer Parse(ByteBuffer buf, ServletReader req) throws Exception {
-		var read = 0;
+	private void Parse(ByteBuffer buf, ServletReader req) throws Exception {
 		outer:
 		for (;;) {
 			switch (req.State) {
-				case STATE_DONE: 
+				case STATE_DONE : 
 					break outer;
 				case STATE_ERROR:
-					throw new Exception("Somehow its go wrong");
+					throw new Exception("Somehow its go wrong when parsing");
 				case STATE_INIT:
-					buf.mark();
-					var parsed = req.ParseRequestLine(buf, req);
-					if (parsed == 0) {
-						buf.reset();
-						break outer;
-					}
-					req.State = ParsingState.STATE_HEADERS;
-					read += parsed;
+					if (req.ParseRequestLine(buf, req) == 0) return;
 					break;
 				case STATE_HEADERS:
-					var parsedHeader = req.ParseHeader(buf);
-					var totalReadH = parsedHeader._1;
-					var done = parsedHeader._2;
-					if (totalReadH == 0) break outer;
-					read += totalReadH;
-					if (done) {
-						long length = (req.getContentLength() != -1) ? req.getContentLength() : 0;
-						req.bodyWrap = new HttpBodyInputStream(req.stream, buf, length);
-						req.State = ParsingState.STATE_DONE;
-					}
+					if (!req.ParseHeader(buf)) return;
 					break;
 				default: 
 					throw new Exception("Somehow its go wrong");
 			}
 		}
-		return read;
+		return;
 	}
-
 
 	public ServletReader ProcessRequest() {
 		var reader = stream;
 		var request = new ServletReader(stream);
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
-
 		try {
 			while (request.State != ParsingState.STATE_DONE && request.State != ParsingState.STATE_ERROR) {
 				var read = reader.read(buf);
@@ -204,7 +185,6 @@ public class ServletReader extends HttpHeaders {
                     fliped = true;
                     break; 
                 }
-
 				if (buf.remaining() == buf.capacity()) {
 					request.State = ParsingState.STATE_ERROR;
 					throw new URITooLongException(" -> uri too long, error 414 -- bytes-read: " + read);
@@ -214,7 +194,7 @@ public class ServletReader extends HttpHeaders {
 			}
 		} catch (Exception  exception) { 
 			if (exception instanceof RuntimeException) throw (RuntimeException) exception;
-			throw new RuntimeException(" -> Failure to parse the request: ", exception);
+			throw new RuntimeException(" -> Failure when parsing the request: ", exception);
 		}
 
 		if (!fliped) buf.flip();

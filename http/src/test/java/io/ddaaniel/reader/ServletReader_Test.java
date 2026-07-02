@@ -50,9 +50,9 @@ public class ServletReader_Test {
 		var reader = new ServletReader(conn).ProcessRequest();
 
 		assertNotNull(reader);
-		assertEquals("localhost:42069", reader.getHost().getHostString() + ":" + reader.getHost().getPort());
-		assertEquals("curl/8.20.0", reader.getFirst("user-agent"));
-		assertEquals("*/*", reader.getAccept().getFirst());
+		assertEquals("localhost:42069", reader.header.getHost().getHostString() + ":" + reader.header.getHost().getPort());
+		assertEquals("curl/8.20.0", reader.header.getFirst("user-agent"));
+		assertEquals("*/*", reader.header.getAccept().getFirst());
 
 		// Test: Malformed Header
 		bytes = "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".getBytes();
