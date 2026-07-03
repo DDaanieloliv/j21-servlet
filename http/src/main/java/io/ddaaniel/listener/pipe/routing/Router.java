@@ -2,6 +2,7 @@ package io.ddaaniel.listener.pipe.routing;
 
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
@@ -22,12 +23,16 @@ public class Router {
             Method method = table.getMethod("table");
             this.compiledTable = (Map<String, Supplier<Object>>) method.invoke(null);
         } catch (Exception e) {
-            throw new RuntimeException("Error on initialize the table router", e);
+            throw new RuntimeException(" -> Error on initialize the table router: ", e);
         }
     }
 
-	public ResponseEntity<?> dispatch(String targetPath) throws Exception {
-		Supplier<Object> routeAction = compiledTable.get(targetPath);
+	public ResponseEntity<?> dispatch(Optional<String> targetPath) throws Exception {
+		if (targetPath.isEmpty()) {
+			System.err.println(" -> Error to obtain the request-target, target should contain a value ");
+			return null; // for now
+		}
+		Supplier<Object> routeAction = compiledTable.get(targetPath.get());
 		if (routeAction == null) return null;
 
 		Object rawResult = routeAction.get();

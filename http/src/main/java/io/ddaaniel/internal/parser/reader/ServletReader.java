@@ -161,7 +161,7 @@ public class ServletReader {
 		return;
 	}
 
-	public ServletReader ProcessRequest() {
+	public ServletReader ProcessMessage() {
 		var reader = stream;
 		var request = new ServletReader(stream);
 		var buf = ByteBuffer.allocate(1024);

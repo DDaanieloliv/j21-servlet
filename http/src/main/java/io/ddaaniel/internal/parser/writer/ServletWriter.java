@@ -3,7 +3,10 @@ package io.ddaaniel.internal.parser.writer;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.util.Optional;
 
+import io.ddaaniel.internal.support.HttpFun.FunHttp;
+import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 import io.ddaaniel.internal.support.httpStatus.HttpStatusCode;
@@ -18,6 +21,24 @@ public class ServletWriter {
     public ServletWriter(WritableByteChannel writer) {
         this.writer = writer;
     }
+
+	public void WriteResponse(Optional<ResponseEntity<?>> responseOption) {
+		if (responseOption.isEmpty()) {
+			byte[] errorBody = FunHttp.respond404().getBytes();
+			this.WriteStatusLine(HttpStatus.NOT_FOUND);
+			this.WriteHeaders(this.DefaultHeaders(errorBody.length));
+			this.WriteBody(FunHttp.respond404().getBytes());
+		}
+		else {
+			ResponseEntity<?> response = responseOption.get();
+			String body = response.getBody() != null ? response.getBody().toString() : "";
+			var headersMap = this.DefaultHeaders(body.getBytes().length);
+			this.WriteStatusLine(response.getStatusCode());
+			if (response.getHeaders() != null) headersMap.putAll(response.getHeaders());
+			this.WriteHeaders(headersMap);
+			this.WriteBody(body.getBytes());
+		}
+	}
 
     public HttpHeaders DefaultHeaders(int contentLen) {
 		var header = new HttpHeaders();

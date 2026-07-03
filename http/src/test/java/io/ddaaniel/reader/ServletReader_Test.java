@@ -25,7 +25,7 @@ public class ServletReader_Test {
 		// Test: Good GET Request line without path
 		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
 		var conn = new ChunkReader(bytes, 2);
-		var reader = new ServletReader(conn).ProcessRequest();
+		var reader = new ServletReader(conn).ProcessMessage();
 
 		assertEquals("GET", reader.methodWrap);
 		assertEquals("/", reader.uriWrap);
@@ -33,7 +33,7 @@ public class ServletReader_Test {
 		// Test: Good GET Request line with path
 		bytes = "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
 		conn = new ChunkReader(bytes, 2);
-		reader = new ServletReader(conn).ProcessRequest();
+		reader = new ServletReader(conn).ProcessMessage();
 
 		assertEquals("GET", reader.methodWrap);
 		assertEquals("/coffee", reader.uriWrap);
@@ -47,7 +47,7 @@ public class ServletReader_Test {
 		// Test: Standard Headers
 		var bytes = "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
 		var conn = new ChunkReader(bytes, 3);
-		var reader = new ServletReader(conn).ProcessRequest();
+		var reader = new ServletReader(conn).ProcessMessage();
 
 		assertNotNull(reader);
 		assertEquals("localhost:42069", reader.header.getHost().getHostString() + ":" + reader.header.getHost().getPort());
@@ -58,7 +58,7 @@ public class ServletReader_Test {
 		bytes = "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".getBytes();
 		var connErr = new ChunkReader(bytes, 3);
 		var err = assertThrowsExactly(MalformedHeaderException.class, () -> {
-			new ServletReader(connErr).ProcessRequest();
+			new ServletReader(connErr).ProcessMessage();
 		});
 		assertEquals(" -> malformed header-name ", err.getMessage());
 	}
@@ -75,7 +75,7 @@ public class ServletReader_Test {
 			"\r\n" +
 			"hello world\n").getBytes();
 		var conn = new ChunkReader(data, 3);
-		var reader = new ServletReader(conn).ProcessRequest();
+		var reader = new ServletReader(conn).ProcessMessage();
 		assertNotNull(reader);
 		assertEquals("hello world\n", new String(reader.getBodyAsString()));
 
@@ -87,7 +87,7 @@ public class ServletReader_Test {
 				"\r\n" +
 				"partial content").getBytes();
 		var badConn = new ChunkReader(badData, 3);
-		var badReader = new ServletReader(badConn).ProcessRequest();
+		var badReader = new ServletReader(badConn).ProcessMessage();
 
 		var err = assertThrowsExactly(MalformedBodyException.class, () -> {
 			badReader.getBodyAsString();

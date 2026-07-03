@@ -7,7 +7,7 @@ import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 @FunctionalInterface
 public interface Handler {
-    void handle(ServletReader r, ServletWriter w);
+    void lock(ServletReader r, ServletWriter w);
 }
 
 

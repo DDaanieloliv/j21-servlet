@@ -3,12 +3,12 @@ package io.ddaaniel.listener;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
-import io.ddaaniel.internal.support.HttpFun.FunHttp;
 import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 import io.ddaaniel.listener.mapper.Server;
@@ -21,33 +21,31 @@ import io.ddaaniel.listener.pipe.routing.Router;
  */
 public class Servlet {
 
-	private ServerSocketChannel listener;
+	private final ServerSocketChannel listener;
 
-	public Server s = new Server();
+	private final ExecutorService executor;
 
-	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+	public final Server server;
 
+	public Servlet() {
+		try {
+			this.listener = ServerSocketChannel.open();
+			this.executor = Executors.newVirtualThreadPerTaskExecutor();
+			this.server = new Server();
+		} catch (Exception e) {
+			throw new RuntimeException(" -> Error when create ServletContainer: ", e);
+		}
+	}
 
 	public Servlet hookUp(int port) throws Exception {
 		var router = new Router();
 		this.attach(port, (reader, writer) -> {
 			try {
-				String target = reader.uriWrap != null ? reader.uriWrap : "";
-				ResponseEntity<?> response = router.dispatch(target);
 
-				if (response != null) {
-					String body = response.getBody() != null ? response.getBody().toString() : "";
-					var headersMap = writer.DefaultHeaders(body.getBytes().length);
-					writer.WriteStatusLine(response.getStatusCode());
-					if (response.getHeaders() != null) headersMap.putAll(response.getHeaders());
-					writer.WriteHeaders(headersMap);
-					writer.WriteBody(body.getBytes());
-				} else {
-					byte[] errorBody = FunHttp.respond404().getBytes();
-					writer.WriteStatusLine(HttpStatus.NOT_FOUND);
-					writer.WriteHeaders(writer.DefaultHeaders(errorBody.length));
-					writer.WriteBody(FunHttp.respond404().getBytes());
-				}
+				Optional<String> target = Optional.of(reader.uriWrap);
+				ResponseEntity<?> response = router.dispatch(target);
+				writer.WriteResponse(Optional.ofNullable(response));
+
 			} catch (Exception e) {
 				System.err.println(" -> Router Error: " + e.getMessage());
 				try {
@@ -61,25 +59,24 @@ public class Servlet {
 	}
 
 	public Servlet attach(int port, Handler handler) throws Exception {
-		s.closed = false;
-		s.handler = handler;
-		this.listener = ServerSocketChannel.open();
-		this.listener = listener.bind(new InetSocketAddress(port));
+		server.closed = false;
+		server.handler = handler;
+		this.listener.bind(new InetSocketAddress(port));
 		executor.submit(() -> { runServer(listener); });
 		return this;
 	}
 
 	public void runServer(ServerSocketChannel listener) {
 		try {
-			while (listener.isOpen() && !s.closed) {
+			while (listener.isOpen() && !server.closed) {
 				var socketChannel = listener.accept();
-				if (s.closed) {
+				if (server.closed) {
 					if (socketChannel != null) socketChannel.close();
 					return;
 				}
-				executor.submit(() -> { handleConnection(s, socketChannel); });
+				executor.submit(() -> { handleConnection(server, socketChannel); });
 			}
-		} catch (Exception e) { if (!s.closed) throw new RuntimeException(e); }
+		} catch (Exception e) { if (!server.closed) throw new RuntimeException(e); }
 	}
 
 	public void handleConnection(Server server, SocketChannel conn) {
@@ -87,14 +84,14 @@ public class Servlet {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
 			try {
-				reader = reader.ProcessRequest();
+				reader = reader.ProcessMessage();
 			} catch (Exception err) { 
 				var badRequestHeaders = writer.DefaultHeaders(0);
 				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);
 				writer.WriteHeaders(badRequestHeaders);
 				return;
 			}
-			server.handler.handle(reader, writer);
+			server.handler.lock(reader, writer);
 		} catch (Exception e) {
 			if (!server.closed) { 
 				System.err.println(" -> Error in connection: " + e.getMessage()); 
@@ -104,7 +101,7 @@ public class Servlet {
 
 	public void Close() {
 		try {
-			s.closed = true;
+			server.closed = true;
 			if (listener != null && listener.isOpen()) listener.close();
 			executor.shutdown();
 		} catch (Exception e) { 
