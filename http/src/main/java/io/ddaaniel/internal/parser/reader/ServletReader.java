@@ -15,8 +15,6 @@ import io.ddaaniel.internal.parser.reader.state.ParsingState;
 import io.ddaaniel.internal.support.HttpBodyInputStream;
 import io.ddaaniel.internal.support.collectionUtil.CollectionUtil;
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
 
 /**
  * ServletReader

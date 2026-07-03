@@ -14,6 +14,7 @@ public class ServletWriter {
 
     private final WritableByteChannel writer;
 
+
     public ServletWriter(WritableByteChannel writer) {
         this.writer = writer;
     }

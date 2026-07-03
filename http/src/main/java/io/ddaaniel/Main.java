@@ -12,9 +12,9 @@ public class Main {
 		var keepAliveLatch = new CountDownLatch(1);
 
 		try {
-			var s = new Servlet().bind(port);
-
+			var s = new Servlet().hookUp(port);
 			System.out.println(" -> Server started on port 42069 ");
+
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				System.out.println("\n -> Signal received! Initiating graceful shutdown...");
 				s.Close();

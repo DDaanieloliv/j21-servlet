@@ -27,22 +27,13 @@ public class Servlet {
 
 	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-	public void Close() {
-		try {
-			s.closed = true;
-			if (listener != null && listener.isOpen()) listener.close();
-			executor.shutdown();
-		} catch (Exception e) { 
-			System.err.println(" -> Error when closing server: " + e.getMessage());
-		}
-	}
 
-	public Servlet bind(int port) throws Exception {
-		var referenceRouter = new Router();
-		var s = new Servlet().dispatch(port, (reader, writer) -> {
+	public Servlet hookUp(int port) throws Exception {
+		var router = new Router();
+		this.attach(port, (reader, writer) -> {
 			try {
 				String target = reader.uriWrap != null ? reader.uriWrap : "";
-				ResponseEntity<?> response = referenceRouter.dispatch(target);
+				ResponseEntity<?> response = router.dispatch(target);
 
 				if (response != null) {
 					String body = response.getBody() != null ? response.getBody().toString() : "";
@@ -64,19 +55,31 @@ public class Servlet {
 					writer.WriteHeaders(writer.DefaultHeaders(0));
 				} catch (Exception ignored) {}
 			}
-
 			return;
 		});
-		return s;
+		return this;
 	}
 
-	public Servlet dispatch(int port, Handler handler) throws Exception {
-		listener = ServerSocketChannel.open();
-		listener.bind(new InetSocketAddress(port));
+	public Servlet attach(int port, Handler handler) throws Exception {
 		s.closed = false;
 		s.handler = handler;
+		this.listener = ServerSocketChannel.open();
+		this.listener = listener.bind(new InetSocketAddress(port));
 		executor.submit(() -> { runServer(listener); });
 		return this;
+	}
+
+	public void runServer(ServerSocketChannel listener) {
+		try {
+			while (listener.isOpen() && !s.closed) {
+				var socketChannel = listener.accept();
+				if (s.closed) {
+					if (socketChannel != null) socketChannel.close();
+					return;
+				}
+				executor.submit(() -> { handleConnection(s, socketChannel); });
+			}
+		} catch (Exception e) { if (!s.closed) throw new RuntimeException(e); }
 	}
 
 	public void handleConnection(Server server, SocketChannel conn) {
@@ -99,16 +102,13 @@ public class Servlet {
 		}
 	}
 
-	public void runServer(ServerSocketChannel listener) {
+	public void Close() {
 		try {
-			while (listener.isOpen() && !s.closed) {
-				var socketChannel = listener.accept();
-				if (s.closed) {
-					if (socketChannel != null) socketChannel.close();
-					return;
-				}
-				executor.submit(() -> { handleConnection(s, socketChannel); });
-			}
-		} catch (Exception e) { if (!s.closed) throw new RuntimeException(e); }
+			s.closed = true;
+			if (listener != null && listener.isOpen()) listener.close();
+			executor.shutdown();
+		} catch (Exception e) { 
+			System.err.println(" -> Error when closing server: " + e.getMessage());
+		}
 	}
 }
