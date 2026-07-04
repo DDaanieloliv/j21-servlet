@@ -3,7 +3,6 @@ package io.ddaaniel.internal.parser.writer;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.util.Optional;
 
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
 import io.ddaaniel.internal.support.httpEntity.ResponseEntity;

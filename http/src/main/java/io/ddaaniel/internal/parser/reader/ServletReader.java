@@ -21,11 +21,12 @@ import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
  */
 public class ServletReader {
 
-	public final ReadableByteChannel stream;
+	private final ReadableByteChannel stream;
 
-	public ParsingState State = ParsingState.STATE_INIT;
+	private final HttpHeaders header;
 
-	public HttpHeaders header;
+
+	private ParsingState state;
 
 	public String uriWrap;
 
@@ -37,6 +38,7 @@ public class ServletReader {
 	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
 		this.header = new HttpHeaders();
+		this.state = ParsingState.STATE_INIT;
 	}
 
 	public InputStream getBody() {
@@ -62,6 +64,10 @@ public class ServletReader {
 		} catch (IOException e) {
 			throw new RuntimeException(" -> Error when reading the body ", e);
 		}
+	}
+
+	public HttpHeaders getHeaders() {
+		return this.header;
 	}
 
 	private int ParseRequestLine(ByteBuffer bytes, ServletReader requestWrap) {
@@ -92,7 +98,7 @@ public class ServletReader {
 
 		requestWrap.methodWrap = parts[0];
 		requestWrap.uriWrap = parts[1];
-		requestWrap.State = ParsingState.STATE_HEADERS;
+		requestWrap.state = ParsingState.STATE_HEADERS;
 		return read;
 	}
 
@@ -135,7 +141,7 @@ public class ServletReader {
 		if (done) {
 			long length = (this.header.getContentLength() != -1) ? this.header.getContentLength() : 0;
 			this.bodyWrap = new HttpBodyInputStream(this.stream, data, length);
-			this.State = ParsingState.STATE_DONE;
+			this.state = ParsingState.STATE_DONE;
 		}
 		return done;
 	}
@@ -143,7 +149,7 @@ public class ServletReader {
 	private void Parse(ByteBuffer buf, ServletReader req) throws Exception {
 		outer:
 		for (;;) {
-			switch (req.State) {
+			switch (req.state) {
 				case STATE_DONE : 
 					break outer;
 				case STATE_ERROR:
@@ -163,15 +169,15 @@ public class ServletReader {
 
 	public ServletReader ProcessMessage() {
 		var reader = stream;
-		var request = new ServletReader(stream);
+		var request = this;
 		var buf = ByteBuffer.allocate(1024);
 		var fliped = false;
 		try {
-			while (request.State != ParsingState.STATE_DONE && request.State != ParsingState.STATE_ERROR) {
+			while (request.state != ParsingState.STATE_DONE && request.state != ParsingState.STATE_ERROR) {
 				var read = reader.read(buf);
 				if (read == -1) {
-					if (request.State != ParsingState.STATE_DONE) {
-						request.State = ParsingState.STATE_ERROR; 
+					if (request.state != ParsingState.STATE_DONE) {
+						request.state = ParsingState.STATE_ERROR; 
 						throw new MalformedBodyException(" -> body shorter than reported content-length ");
 					}
 					break;
@@ -179,12 +185,12 @@ public class ServletReader {
 				buf.flip();
 				fliped = true;
 				Parse(buf, request);
-				if (request.State == ParsingState.STATE_DONE) {
+				if (request.state == ParsingState.STATE_DONE) {
                     fliped = true;
                     break; 
                 }
 				if (buf.remaining() == buf.capacity()) {
-					request.State = ParsingState.STATE_ERROR;
+					request.state = ParsingState.STATE_ERROR;
 					throw new URITooLongException(" -> uri too long, error 414 -- bytes-read: " + read);
 				}
 				buf.compact();

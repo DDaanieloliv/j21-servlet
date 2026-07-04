@@ -3,13 +3,11 @@ package io.ddaaniel.listener;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
-import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
@@ -25,7 +23,7 @@ public class Servlet {
 
 	private final ExecutorService executor;
 
-	public final Server server;
+	private final Server server;
 
 	public Servlet() {
 		try {
