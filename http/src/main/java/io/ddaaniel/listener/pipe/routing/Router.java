@@ -27,17 +27,19 @@ public class Router {
         }
     }
 
-	public ResponseEntity<?> dispatch(Optional<String> targetPath) throws Exception {
-		if (targetPath.isEmpty()) {
+	public Optional<ResponseEntity<?>>dispatch(String targetPath) throws Exception {
+		if (targetPath.isEmpty() || targetPath.isEmpty()) {
 			System.err.println(" -> Error to obtain the request-target, target should contain a value ");
-			return null; // for now
+			return Optional.empty();
 		}
-		Supplier<Object> routeAction = compiledTable.get(targetPath.get());
-		if (routeAction == null) return null;
+		Supplier<Object> routeAction = compiledTable.get(targetPath);
+		if (routeAction == null) {
+			return Optional.empty();
+		}
 
 		Object rawResult = routeAction.get();
 		if (rawResult instanceof ResponseEntity) {
-			return (ResponseEntity<?>) rawResult;
+			return Optional.of((ResponseEntity<?>) rawResult);
 		}
 
 		String bodyText = (rawResult != null) ? rawResult.toString() : "";
@@ -46,6 +48,6 @@ public class Router {
 		header.set("Connection", "close");
 		header.set("Content-Type", "text/plain");
 		var res = new ResponseEntity<>(bodyText, header, HttpStatus.OK);
-		return res;
+		return Optional.of(res);
 	}
 }

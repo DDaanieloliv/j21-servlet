@@ -22,22 +22,20 @@ public class ServletWriter {
         this.writer = writer;
     }
 
-	public void WriteResponse(Optional<ResponseEntity<?>> responseOption) {
-		if (responseOption.isEmpty()) {
-			byte[] errorBody = FunHttp.respond404().getBytes();
-			this.WriteStatusLine(HttpStatus.NOT_FOUND);
-			this.WriteHeaders(this.DefaultHeaders(errorBody.length));
-			this.WriteBody(FunHttp.respond404().getBytes());
-		}
-		else {
-			ResponseEntity<?> response = responseOption.get();
-			String body = response.getBody() != null ? response.getBody().toString() : "";
-			var headersMap = this.DefaultHeaders(body.getBytes().length);
-			this.WriteStatusLine(response.getStatusCode());
-			if (response.getHeaders() != null) headersMap.putAll(response.getHeaders());
-			this.WriteHeaders(headersMap);
-			this.WriteBody(body.getBytes());
-		}
+	public void WriteResponse(ResponseEntity<?> response) {
+		String body = response.getBody() != null ? response.getBody().toString() : "";
+		var headersMap = this.DefaultHeaders(body.getBytes().length);
+		this.WriteStatusLine(response.getStatusCode());
+		if (response.getHeaders() != null) headersMap.putAll(response.getHeaders());
+		this.WriteHeaders(headersMap);
+		this.WriteBody(body.getBytes());
+	}
+
+	public void WriteErrorResponse() {
+		byte[] errorBody = FunHttp.respond404().getBytes();
+		this.WriteStatusLine(HttpStatus.NOT_FOUND);
+		this.WriteHeaders(this.DefaultHeaders(errorBody.length));
+		this.WriteBody(FunHttp.respond404().getBytes());
 	}
 
     public HttpHeaders DefaultHeaders(int contentLen) {

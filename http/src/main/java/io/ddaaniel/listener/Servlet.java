@@ -29,9 +29,9 @@ public class Servlet {
 
 	public Servlet() {
 		try {
+			this.server = new Server();
 			this.listener = ServerSocketChannel.open();
 			this.executor = Executors.newVirtualThreadPerTaskExecutor();
-			this.server = new Server();
 		} catch (Exception e) {
 			throw new RuntimeException(" -> Error when create ServletContainer: ", e);
 		}
@@ -42,9 +42,10 @@ public class Servlet {
 		this.attach(port, (reader, writer) -> {
 			try {
 
-				Optional<String> target = Optional.of(reader.uriWrap);
-				ResponseEntity<?> response = router.dispatch(target);
-				writer.WriteResponse(Optional.ofNullable(response));
+				String target = reader.uriWrap;
+				router.dispatch(target).ifPresentOrElse(
+						(response) -> writer.WriteResponse(response), 
+						() -> writer.WriteErrorResponse());
 
 			} catch (Exception e) {
 				System.err.println(" -> Router Error: " + e.getMessage());
