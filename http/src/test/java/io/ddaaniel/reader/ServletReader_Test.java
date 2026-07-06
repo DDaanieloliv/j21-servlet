@@ -27,16 +27,16 @@ public class ServletReader_Test {
 		var conn = new ChunkReader(bytes, 2);
 		var reader = new ServletReader(conn).ProcessMessage();
 
-		assertEquals("GET", reader.methodWrap);
-		assertEquals("/", reader.uriWrap);
+		assertEquals("GET", reader.method());
+		assertEquals("/", reader.uri());
 
 		// Test: Good GET Request line with path
 		bytes = "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/8.20.0\r\nAccept: */*\r\n\r\n".getBytes();
 		conn = new ChunkReader(bytes, 2);
 		reader = new ServletReader(conn).ProcessMessage();
 
-		assertEquals("GET", reader.methodWrap);
-		assertEquals("/coffee", reader.uriWrap);
+		assertEquals("GET", reader.method());
+		assertEquals("/coffee", reader.uri());
 	}
 
 	/**
@@ -50,9 +50,9 @@ public class ServletReader_Test {
 		var reader = new ServletReader(conn).ProcessMessage();
 
 		assertNotNull(reader);
-		assertEquals("localhost:42069", reader.getHeaders().getHost().getHostString() + ":" + reader.getHeaders().getHost().getPort());
-		assertEquals("curl/8.20.0", reader.getHeaders().getFirst("user-agent"));
-		assertEquals("*/*", reader.getHeaders().getAccept().getFirst());
+		assertEquals("localhost:42069", reader.headers().getHost().getHostString() + ":" + reader.headers().getHost().getPort());
+		assertEquals("curl/8.20.0", reader.headers().getFirst("user-agent"));
+		assertEquals("*/*", reader.headers().getAccept().getFirst());
 
 		// Test: Malformed Header
 		bytes = "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".getBytes();

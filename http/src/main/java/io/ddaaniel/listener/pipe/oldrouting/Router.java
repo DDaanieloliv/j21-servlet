@@ -17,7 +17,7 @@ import io.ddaaniel.listener.pipe.oldrouting.handlers.YourProblemHandler;
 public abstract class Router {
 
 	public static void route(ServletReader reader, ServletWriter writer) {
-		var target = reader.uriWrap;
+		var target = reader.uri;
 		var headers = writer.DefaultHeaders(0);
 
 		try {

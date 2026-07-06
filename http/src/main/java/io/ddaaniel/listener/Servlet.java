@@ -40,7 +40,7 @@ public class Servlet {
 		this.attach(port, (reader, writer) -> {
 			try {
 
-				String target = reader.uriWrap;
+				String target = reader.uri;
 				router.dispatch(target).ifPresentOrElse(
 						(response) -> writer.WriteResponse(response), 
 						() -> writer.WriteErrorResponse());
@@ -83,7 +83,7 @@ public class Servlet {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
 			try {
-				reader = reader.ProcessMessage();
+				reader.ProcessMessage();
 			} catch (Exception err) { 
 				var badRequestHeaders = writer.DefaultHeaders(0);
 				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);

@@ -20,7 +20,7 @@ import io.ddaaniel.internal.parser.writer.ServletWriter;
 public abstract class HttpBinHandler {
 
 	public static void HttpStreamRes(ServletReader reader, HttpHeaders headers, ServletWriter writer) throws Exception {
-		var target = reader.uriWrap;
+		var target = reader.uri;
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()
 			.uri(URI.create("https://httpbin.org" + target.substring("/httpbin".length())))
