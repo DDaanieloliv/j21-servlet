@@ -1,7 +1,5 @@
 package io.ddaaniel.internal.parser.reader;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -12,7 +10,6 @@ import io.ddaaniel.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.internal.exception.URITooLongException;
 import io.ddaaniel.internal.support.HttpBodyInputStream;
 import io.ddaaniel.internal.support.collectionUtil.CollectionUtil;
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 
 
 /**
@@ -20,37 +17,20 @@ import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
  */
 public class ServletReader {
 
-	private final ReadableByteChannel stream;
-
-	private final HttpHeaders headers;
-
-
 	private Parser state;
 
-	public String uri;
-
-	public String method;
-
-	private InputStream body;
-
+	private ReadableByteChannel stream;
 
 	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
-		this.headers = new HttpHeaders();
 		this.state = Parser._INIT;
-	}
-
-	public InputStream getBody() {
-		if (this.body == null) {
-			return new ByteArrayInputStream(new byte[0]);
-		}
-		return this.body;
 	}
 
 
 	public HttpServletRequest ProcessMessage() {
 		var reader = stream;
 		var buf = ByteBuffer.allocate(1024);
+		var builder = new HttpRequestBuilder();
 		var fliped = false;
 		try {
 			while (this.state != Parser._DONE && this.state != Parser._ERROR) {
@@ -64,7 +44,7 @@ public class ServletReader {
 				}
 				buf.flip();
 				fliped = true;
-				parse(buf);
+				parse(buf, builder);
 				if (this.state == Parser._DONE) {
                     fliped = true;
                     break; 
@@ -82,82 +62,67 @@ public class ServletReader {
 		}
 
 		if (!fliped) buf.flip();
-		return new HttpServletRequest(
-				this.method, 
-				this.uri, 
-				this.headers, 
-				this.body != null ? this.body : new ByteArrayInputStream(new byte[0])
-				);
+		return builder.build();
 	}
 
 
-	private void parse(ByteBuffer buf) throws Exception {
+	private void parse(ByteBuffer buf, HttpRequestBuilder builder) throws Exception {
 		for (;;) {
-			Parser state = this.state;
-			state.parse(buf, this);
-			if (this.state == state || this.state == Parser._DONE || this.state == Parser._ERROR) {
+			Parser currentState = this.state;
+			Parser nextState = currentState.parse(this.stream, buf, builder);
+			this.state = nextState;
+			if (nextState == currentState || nextState == Parser._DONE || nextState == Parser._ERROR) {
 				break;
-            }
+			}
 		}
 	}
 
 	enum Parser {
-
-		_INIT() {
-			void parse (ByteBuffer bytes, ServletReader reader) {
+		_INIT {
+			@Override
+			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) {
 				var read = 0;
 				var SEPARATOR = "\r\n";
-				var START = bytes.position();
-				var EOL = CollectionUtil.IndexOf(bytes, SEPARATOR, START);
-				if (EOL == -1) return;
+				var START = buffer.position();
+				var EOL = CollectionUtil.IndexOf(buffer, SEPARATOR, START);
+				if (EOL == -1) return this;
 				var lineBytes = new byte[EOL - START];
-				bytes.get(lineBytes); 
-				bytes.position(bytes.position() + SEPARATOR.length());
-
-				read += (bytes.position() - START);
+				buffer.get(lineBytes); 
+				buffer.position(buffer.position() + SEPARATOR.length());
+				read += (buffer.position() - START);
 				var startLine = new String(lineBytes, StandardCharsets.UTF_8);
 				var parts = startLine.split(" ");
 				if (parts.length != 3) { 
-					throw new MalformedRequestLineException(
-							" -> malformed start-line -- bytes-read: " + read
-							);
+					throw new MalformedRequestLineException( " -> malformed start-line -- buffer-read: " + read);
 				}
-
 				var httpParts = parts[2].split("/");
 				if (httpParts.length != 2 || !httpParts[0].equals("HTTP") || !httpParts[1].equals("1.1")) { 
-					throw new MalformedRequestLineException(
-							" -> malformed request-line -- bytes-read: " + read
-							);
+					throw new MalformedRequestLineException( " -> malformed request-line -- buffer-read: " + read);
 				}
 
-				reader.method = parts[0];
-				reader.uri = parts[1];
-				reader.state = Parser._HEADER;
-				return;
+				builder.method(parts[0]).uri(parts[1]);
+				return _HEADER;
 			}
 		},
 
-		_HEADER() {
+		_HEADER {
 			@Override
-			void parse(ByteBuffer data, ServletReader reader) {
-				var done = false;
-				var START = data.position();
+			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) {
 				var SEPARATOR = "\r\n";
-
 				for (;;) {
-					var EOL = CollectionUtil.IndexOf(data, SEPARATOR, START);
-					if (EOL == -1) {
-						break;
-					}
+					var START = buffer.position();
+					var EOL = CollectionUtil.IndexOf(buffer, SEPARATOR, START);
 					if (EOL - START == 0) {
-						data.position(EOL + SEPARATOR.length());
-						done = true;
+						buffer.position(EOL + SEPARATOR.length());
+						long length = builder.headers().getContentLength();
+						length = (length != -1) ? length : 0;
+						builder.body(new HttpBodyInputStream(stream, buffer, length));
 						break;
 					}
+					if (EOL == -1) return this;
 					var headerline = new byte[EOL - START];
-					data.get(headerline);
-					data.position(data.position() + SEPARATOR.length());
-
+					buffer.get(headerline);
+					buffer.position(buffer.position() + SEPARATOR.length());
 					var parts = CollectionUtil.Split(headerline, ":", 2);
 					if (parts.length != 2) {
 						throw new MalformedHeaderException(" -> malformed field-line ");
@@ -167,34 +132,29 @@ public class ServletReader {
 					if (CollectionUtil.HasSuffix(name, " ".getBytes())) {
 						throw new MalformedHeaderException(" -> malformed field-name ");
 					}
-
 					if (!CollectionUtil.isToken(name)) {
 						throw new MalformedHeaderException(" -> malformed header-name ");
 					}
-					reader.headers.set(new String(name), new String(value));
-					START = data.position();
+					builder.headers().set(new String(name), new String(value));
 				}
-				if (done) {
-					long length = (reader.headers.getContentLength() != -1) ? reader.headers.getContentLength() : 0;
-					reader.body = new HttpBodyInputStream(reader.stream, data, length);
-					reader.state = Parser._DONE;
-				}
+				return _DONE;
 			}
 		},
 
-		_ERROR() {
+		_ERROR {
 			@Override
-            void parse(ByteBuffer bytes, ServletReader reader) throws Exception {
-                throw new Exception("Somehow its go wrong when parsing");
-            }
+			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
+				throw new Exception("Somehow its go wrong when parsing");
+			}
 		},
 
-		_DONE() {
+		_DONE {
 			@Override
-			void parse(ByteBuffer bytes, ServletReader reader) {
+			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
+				return _DONE;
 			}
 		};
 
-		abstract void parse(ByteBuffer bytes, ServletReader reader) throws Exception;
+		abstract Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) throws Exception;
 	}
 }

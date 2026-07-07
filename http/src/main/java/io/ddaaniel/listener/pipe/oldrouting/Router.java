@@ -1,7 +1,7 @@
 package io.ddaaniel.listener.pipe.oldrouting;
 
 
-import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.internal.parser.reader.HttpServletRequest;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
@@ -16,17 +16,17 @@ import io.ddaaniel.listener.pipe.oldrouting.handlers.YourProblemHandler;
  */
 public abstract class Router {
 
-	public static void route(ServletReader reader, ServletWriter writer) {
-		var target = reader.uri;
+	public static void route(HttpServletRequest message, ServletWriter writer) {
+		var target = message.uri();
 		var headers = writer.DefaultHeaders(0);
 
 		try {
 			switch (target) {
-				case "/video" -> VideoStreamHandler.handleVideoStreaming(reader, headers, writer);
-				case "/yourproblem" -> YourProblemHandler.handleYourProblem(reader, headers, writer);
-				case "/myproblem" -> MyProblemHandler.handleMyProblem(reader, headers, writer);
-				case "/httpbin/stream" -> HttpBinHandler.HttpStreamRes(reader, headers, writer); 
-				default ->  handleNotFound(reader, headers, writer);
+				case "/video" -> VideoStreamHandler.handleVideoStreaming(message, headers, writer);
+				case "/yourproblem" -> YourProblemHandler.handleYourProblem(message, headers, writer);
+				case "/myproblem" -> MyProblemHandler.handleMyProblem(message, headers, writer);
+				case "/httpbin/stream" -> HttpBinHandler.HttpStreamRes(message, headers, writer); 
+				default ->  handleNotFound(message, headers, writer);
 			}
 		} catch (Exception e) {
 			if (e instanceof java.io.IOException || (e.getCause() != null && e.getCause() instanceof java.io.IOException)) {
@@ -39,7 +39,7 @@ public abstract class Router {
 
 
 
-	private static void handleNotFound(ServletReader reader, HttpHeaders headers, ServletWriter writer) throws Exception {
+	private static void handleNotFound(HttpServletRequest message, HttpHeaders headers, ServletWriter writer) throws Exception {
 		var errBody = FunHttp.respond404().getBytes();
 		headers.set("Content-Length", String.valueOf(errBody.length));
 		headers.set("Content-Type", "text/html");

@@ -1,36 +1,35 @@
 package io.ddaaniel.internal.parser.reader;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 
 /**
  * HttpServletRequest
  */
 public record HttpServletRequest(
-		String method,
-		String uri,
-		HttpHeaders headers,
+		String method, 
+		String uri, 
+		HttpHeaders headers, 
 		InputStream body
-		) {
+		) { }
 
-	public String getBodyAsString() {
-		if (this.body== null) {
-			return "";
-		}
+class HttpRequestBuilder {
+	private String method;
+	private String uri;
+	private final HttpHeaders headers = new HttpHeaders();
+	private InputStream body;
 
-		try (var result = new java.io.ByteArrayOutputStream()) {
-			byte[] buffer = new byte[512];
-			int length;
-			while ((length = this.body.read(buffer)) != -1) {
-				result.write(buffer, 0, length);
-			}
+	public HttpRequestBuilder method(String method) { this.method = method; return this; }
+	public HttpRequestBuilder uri(String uri) { this.uri = uri; return this; }
+	public HttpHeaders headers() { return this.headers; }
+	public HttpRequestBuilder body(InputStream body) { this.body = body; return this; }
 
-			return result.toString(StandardCharsets.UTF_8);
-		} catch (IOException e) {
-			throw new RuntimeException(" -> Error when reading the body ", e);
-		}
+	public HttpServletRequest build() {
+		return new HttpServletRequest(
+				this.method, 
+				this.uri, 
+				this.headers, 
+				this.body != null ? this.body : new java.io.ByteArrayInputStream(new byte[0])
+				);
 	}
 }

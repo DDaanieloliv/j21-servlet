@@ -11,7 +11,7 @@ import java.util.HexFormat;
 
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.internal.parser.reader.HttpServletRequest;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 /**
@@ -19,8 +19,8 @@ import io.ddaaniel.internal.parser.writer.ServletWriter;
  */
 public abstract class HttpBinHandler {
 
-	public static void HttpStreamRes(ServletReader reader, HttpHeaders headers, ServletWriter writer) throws Exception {
-		var target = reader.uri;
+	public static void HttpStreamRes(HttpServletRequest message, HttpHeaders headers, ServletWriter writer) throws Exception {
+		var target = message.uri();
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()
 			.uri(URI.create("https://httpbin.org" + target.substring("/httpbin".length())))

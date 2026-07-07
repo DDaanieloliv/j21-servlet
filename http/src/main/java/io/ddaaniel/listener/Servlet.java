@@ -6,6 +6,7 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import io.ddaaniel.internal.parser.reader.HttpServletRequest;
 import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
@@ -37,10 +38,10 @@ public class Servlet {
 
 	public Servlet hookUp(int port) throws Exception {
 		var router = new Router();
-		this.attach(port, (reader, writer) -> {
+		this.attach(port, (message, writer) -> {
 			try {
 
-				String target = reader.uri;
+				String target = message.uri();
 				router.dispatch(target).ifPresentOrElse(
 						(response) -> writer.WriteResponse(response), 
 						() -> writer.WriteErrorResponse());
@@ -59,7 +60,7 @@ public class Servlet {
 
 	public Servlet attach(int port, Handler handler) throws Exception {
 		server.closed = false;
-		server.handler = handler;
+		server.forward = handler;
 		this.listener.bind(new InetSocketAddress(port));
 		executor.submit(() -> { runServer(listener); });
 		return this;
@@ -82,15 +83,17 @@ public class Servlet {
 		try (conn) {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
+
+			HttpServletRequest message;		
 			try {
-				reader.ProcessMessage();
+				message = reader.ProcessMessage();
 			} catch (Exception err) { 
 				var badRequestHeaders = writer.DefaultHeaders(0);
 				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);
 				writer.WriteHeaders(badRequestHeaders);
 				return;
 			}
-			server.handler.lock(reader, writer);
+			server.forward.get(message, writer);
 		} catch (Exception e) {
 			if (!server.closed) { 
 				System.err.println(" -> Error in connection: " + e.getMessage()); 

@@ -7,7 +7,7 @@ import io.ddaaniel.listener.pipe.Handler;
  */
 public class Server {
 	public boolean closed;
-	public Handler handler;
+	public Handler forward;
 
 	public Server(){}
 }
