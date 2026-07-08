@@ -1,5 +1,6 @@
 package io.ddaaniel.internal.parser.reader;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -19,57 +20,73 @@ public class ServletReader {
 
 	private Parser state;
 
+	private NetworkBuffer buffer;
+
 	private ReadableByteChannel stream;
+
 
 	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
 		this.state = Parser._INIT;
+		this.buffer = new NetworkBuffer();
 	}
 
+	private void parserSet(Parser state) {
+		this.state = state;
+	}
 
-	public HttpServletRequest ProcessMessage() {
-		var reader = stream;
-		var buf = ByteBuffer.allocate(1024);
+	private boolean isTerminated() {
+		return this.state == Parser._DONE;
+	}
+
+	private boolean isAvailable() {
+		return this.state != Parser._DONE && this.state != Parser._ERROR;
+	}
+
+	private void assertEnd() {
+		if (!isTerminated()) {
+			parserSet(Parser._ERROR); 
+			throw new MalformedBodyException(" -> body shorter than reported content-length ");
+		}
+	}
+
+	public HttpServletRequest processMessage() {
 		var builder = new HttpRequestBuilder();
-		var fliped = false;
+
 		try {
-			while (this.state != Parser._DONE && this.state != Parser._ERROR) {
-				var read = reader.read(buf);
-				if (read == -1) {
-					if (this.state != Parser._DONE) {
-						this.state = Parser._ERROR; 
-						throw new MalformedBodyException(" -> body shorter than reported content-length ");
-					}
-					break;
+			while (isAvailable()) {
+				if (buffer.readFrom(stream) == -1) {
+					buffer.forceFlipForBody();
+					assertEnd();
+					return builder.build();
 				}
-				buf.flip();
-				fliped = true;
+
+				var buf = buffer.prepareForParsing();
 				parse(buf, builder);
-				if (this.state == Parser._DONE) {
-                    fliped = true;
-                    break; 
-                }
-				if (buf.remaining() == buf.capacity()) {
-					this.state = Parser._ERROR;
-					throw new URITooLongException(" -> uri too long, error 414 -- bytes-read: " + read);
+				if (isTerminated()) {
+					return builder.build();
 				}
-				buf.compact();
-				fliped = false;
+
+				if (buffer.isStalled()) {
+					parserSet(Parser._ERROR); 
+					throw new URITooLongException(" -> uri too long, error 414 ");
+				}
+				buffer.prepareForNextRead();
+
 			}
 		} catch (Exception  exception) { 
 			if (exception instanceof RuntimeException) throw (RuntimeException) exception;
 			throw new RuntimeException(" -> Failure when parsing the servlet-request: ", exception);
 		}
 
-		if (!fliped) buf.flip();
 		return builder.build();
 	}
 
 
-	private void parse(ByteBuffer buf, HttpRequestBuilder builder) throws Exception {
+	private void parse(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
 		for (;;) {
 			Parser currentState = this.state;
-			Parser nextState = currentState.parse(this.stream, buf, builder);
+			Parser nextState = currentState.parse(this.stream, buffer, builder);
 			this.state = nextState;
 			if (nextState == currentState || nextState == Parser._DONE || nextState == Parser._ERROR) {
 				break;
@@ -156,5 +173,31 @@ public class ServletReader {
 		};
 
 		abstract Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) throws Exception;
+	}
+
+
+	private static class NetworkBuffer {
+		private final ByteBuffer buf = ByteBuffer.allocate(1024);
+
+		public int readFrom(ReadableByteChannel channel) throws IOException {
+			return channel.read(buf);
+		}
+
+		public ByteBuffer prepareForParsing() {
+			buf.flip();
+			return buf;
+		}
+
+		public void prepareForNextRead() {
+			buf.compact();
+		}
+
+		public void forceFlipForBody() {
+			buf.flip();
+		}
+
+		public boolean isStalled() {
+			return buf.remaining() == buf.capacity();
+		}
 	}
 }

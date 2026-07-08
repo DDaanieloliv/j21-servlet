@@ -86,7 +86,7 @@ public class Servlet {
 
 			HttpServletRequest message;		
 			try {
-				message = reader.ProcessMessage();
+				message = reader.processMessage();
 			} catch (Exception err) { 
 				var badRequestHeaders = writer.DefaultHeaders(0);
 				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);
