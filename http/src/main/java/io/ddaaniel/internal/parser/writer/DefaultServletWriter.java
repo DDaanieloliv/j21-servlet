@@ -12,12 +12,12 @@ import io.ddaaniel.internal.support.httpStatus.HttpStatusCode;
 
 
 
-public class ServletWriter {
+public class DefaultServletWriter {
 
     private final WritableByteChannel writer;
 
 
-    public ServletWriter(WritableByteChannel writer) {
+    public DefaultServletWriter(WritableByteChannel writer) {
         this.writer = writer;
     }
 

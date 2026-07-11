@@ -7,8 +7,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.ddaaniel.internal.parser.reader.HttpServletRequest;
-import io.ddaaniel.internal.parser.reader.ServletReader;
-import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.internal.parser.reader.DefaultServletReader;
+import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 import io.ddaaniel.listener.mapper.Server;
 import io.ddaaniel.listener.pipe.Handler;
@@ -16,9 +16,9 @@ import io.ddaaniel.listener.pipe.routing.Router;
 
 
 /**
- * Servlet
+ * DefaultServletContainer
  */
-public class Servlet {
+public class DefaultServletContainer {
 
 	private final ServerSocketChannel listener;
 
@@ -26,7 +26,7 @@ public class Servlet {
 
 	private final Server server;
 
-	public Servlet() {
+	public DefaultServletContainer() {
 		try {
 			this.server = new Server();
 			this.listener = ServerSocketChannel.open();
@@ -36,7 +36,7 @@ public class Servlet {
 		}
 	}
 
-	public Servlet hookUp(int port) throws Exception {
+	public DefaultServletContainer hookUp(int port) throws Exception {
 		var router = new Router();
 		this.attach(port, (message, writer) -> {
 			try {
@@ -58,7 +58,7 @@ public class Servlet {
 		return this;
 	}
 
-	public Servlet attach(int port, Handler handler) throws Exception {
+	public DefaultServletContainer attach(int port, Handler handler) throws Exception {
 		server.closed = false;
 		server.forward = handler;
 		this.listener.bind(new InetSocketAddress(port));
@@ -81,8 +81,8 @@ public class Servlet {
 
 	public void handleConnection(Server server, SocketChannel conn) {
 		try (conn) {
-			var reader = new ServletReader(conn);
-			var writer = new ServletWriter(conn);
+			var reader = new DefaultServletReader(conn);
+			var writer = new DefaultServletWriter(conn);
 
 			HttpServletRequest message;		
 			try {

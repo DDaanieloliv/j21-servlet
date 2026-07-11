@@ -12,14 +12,14 @@ import java.util.HexFormat;
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.HttpServletRequest;
-import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 
 /**
  * HttpBin
  */
 public abstract class HttpBinHandler {
 
-	public static void HttpStreamRes(HttpServletRequest message, HttpHeaders headers, ServletWriter writer) throws Exception {
+	public static void HttpStreamRes(HttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
 		var target = message.uri();
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()

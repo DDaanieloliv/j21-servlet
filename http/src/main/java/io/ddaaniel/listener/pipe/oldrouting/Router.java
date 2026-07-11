@@ -2,7 +2,7 @@ package io.ddaaniel.listener.pipe.oldrouting;
 
 
 import io.ddaaniel.internal.parser.reader.HttpServletRequest;
-import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
@@ -16,7 +16,7 @@ import io.ddaaniel.listener.pipe.oldrouting.handlers.YourProblemHandler;
  */
 public abstract class Router {
 
-	public static void route(HttpServletRequest message, ServletWriter writer) {
+	public static void route(HttpServletRequest message, DefaultServletWriter writer) {
 		var target = message.uri();
 		var headers = writer.DefaultHeaders(0);
 
@@ -39,7 +39,7 @@ public abstract class Router {
 
 
 
-	private static void handleNotFound(HttpServletRequest message, HttpHeaders headers, ServletWriter writer) throws Exception {
+	private static void handleNotFound(HttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
 		var errBody = FunHttp.respond404().getBytes();
 		headers.set("Content-Length", String.valueOf(errBody.length));
 		headers.set("Content-Type", "text/html");
@@ -49,7 +49,7 @@ public abstract class Router {
 		writer.WriteBody(errBody);
 	}
 
-	private static void handleInternalError(HttpHeaders headers, ServletWriter writer, Exception err) {
+	private static void handleInternalError(HttpHeaders headers, DefaultServletWriter writer, Exception err) {
 		System.err.println(" -> Global Router Error: " + err.getMessage());
 		try {
 			var errBody = FunHttp.respond500().getBytes();

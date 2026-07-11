@@ -1,89 +1,30 @@
 package io.ddaaniel.internal.parser.reader;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 
-import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
-import io.ddaaniel.internal.exception.URITooLongException;
 import io.ddaaniel.internal.support.HttpBodyInputStream;
 import io.ddaaniel.internal.support.collectionUtil.CollectionUtil;
 
-
 /**
- * ServletReader
+ * DefaultHttp11ProtocolParser
  */
-public class ServletReader {
+public class DefaultHttp11ProtocolParser implements HttpProtocol {
 
 	private Parser state;
 
-	private NetworkBuffer buffer;
-
 	private ReadableByteChannel stream;
 
-
-	public ServletReader(ReadableByteChannel stream) {
-		this.stream = stream;
+	public DefaultHttp11ProtocolParser(ReadableByteChannel conn) {
+		this.stream = conn;
 		this.state = Parser._INIT;
-		this.buffer = new NetworkBuffer();
 	}
 
-	private void parserSet(Parser state) {
-		this.state = state;
-	}
-
-	private boolean isTerminated() {
-		return this.state == Parser._DONE;
-	}
-
-	private boolean isAvailable() {
-		return this.state != Parser._DONE && this.state != Parser._ERROR;
-	}
-
-	private void assertEnd() {
-		if (!isTerminated()) {
-			parserSet(Parser._ERROR); 
-			throw new MalformedBodyException(" -> body shorter than reported content-length ");
-		}
-	}
-
-	public HttpServletRequest processMessage() {
-		var builder = new HttpRequestBuilder();
-
-		try {
-			while (isAvailable()) {
-				if (buffer.readFrom(stream) == -1) {
-					buffer.forceFlipForBody();
-					assertEnd();
-					return builder.build();
-				}
-
-				var buf = buffer.prepareForParsing();
-				parse(buf, builder);
-				if (isTerminated()) {
-					return builder.build();
-				}
-
-				if (buffer.isStalled()) {
-					parserSet(Parser._ERROR); 
-					throw new URITooLongException(" -> uri too long, error 414 ");
-				}
-				buffer.prepareForNextRead();
-
-			}
-		} catch (Exception  exception) { 
-			if (exception instanceof RuntimeException) throw (RuntimeException) exception;
-			throw new RuntimeException(" -> Failure when parsing the servlet-request: ", exception);
-		}
-
-		return builder.build();
-	}
-
-
-	private void parse(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
+	@Override
+	public void parse(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
 		for (;;) {
 			Parser currentState = this.state;
 			Parser nextState = currentState.parse(this.stream, buffer, builder);
@@ -92,6 +33,16 @@ public class ServletReader {
 				break;
 			}
 		}
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return this.state == Parser._DONE;
+	}
+
+	@Override
+	public boolean isFailed() {
+		return this.state == Parser._ERROR;
 	}
 
 	enum Parser {
@@ -173,31 +124,5 @@ public class ServletReader {
 		};
 
 		abstract Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) throws Exception;
-	}
-
-
-	private static class NetworkBuffer {
-		private final ByteBuffer buf = ByteBuffer.allocate(1024);
-
-		public int readFrom(ReadableByteChannel channel) throws IOException {
-			return channel.read(buf);
-		}
-
-		public ByteBuffer prepareForParsing() {
-			buf.flip();
-			return buf;
-		}
-
-		public void prepareForNextRead() {
-			buf.compact();
-		}
-
-		public void forceFlipForBody() {
-			buf.flip();
-		}
-
-		public boolean isStalled() {
-			return buf.remaining() == buf.capacity();
-		}
 	}
 }

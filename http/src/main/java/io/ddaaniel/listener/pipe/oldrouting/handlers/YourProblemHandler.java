@@ -1,7 +1,7 @@
 package io.ddaaniel.listener.pipe.oldrouting.handlers;
 
 import io.ddaaniel.internal.parser.reader.HttpServletRequest;
-import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
 import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.internal.support.httpStatus.HttpStatus;
@@ -11,7 +11,7 @@ import io.ddaaniel.internal.support.httpStatus.HttpStatus;
  */
 public abstract class YourProblemHandler {
 
-	public static void handleYourProblem(HttpServletRequest reader, HttpHeaders headers, ServletWriter wirter) throws Exception {
+	public static void handleYourProblem(HttpServletRequest reader, HttpHeaders headers, DefaultServletWriter wirter) throws Exception {
 		var body = FunHttp.respond400().getBytes();
 		headers.set("Content-Length", String.valueOf(body.length));
 		headers.set("Content-Type", "text/html");
