@@ -291,9 +291,23 @@ public class HttpHeaders {
 		return (value != null ? URI.create(value) : null);
 	}
 
+	/**
+	 * Set the media type of the body,
+	 * as specified by the {@code Content-Type} header.
+	 */
 	public void setContentType(String mediaType) {
 		if (mediaType != null) {
-			set(CONTENT_TYPE, mediaType.toString());
+			String[] parts = mediaType.split("/");
+			if (parts.length > 0 && parts[0].trim().equals("*")) {
+				throw new IllegalArgumentException("Content-Type cannot contain wildcard type '*'");
+			}
+			if (parts.length > 1) {
+				String subtype = parts[1].split(";")[0].trim();
+				if (subtype.equals("*")) {
+					throw new IllegalArgumentException("Content-Type cannot contain wildcard subtype '*'");
+				}
+			}
+			set(CONTENT_TYPE, mediaType);
 		}
 		else {
 			remove(CONTENT_TYPE);

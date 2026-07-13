@@ -1,8 +1,14 @@
 package io.ddaaniel.internal.parser.writer;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
@@ -35,6 +41,72 @@ public class DefaultServletWriter {
 		this.WriteStatusLine(HttpStatus.NOT_FOUND);
 		this.WriteHeaders(this.DefaultHeaders(errorBody.length));
 		this.WriteBody(FunHttp.respond404().getBytes());
+	}
+
+	public void writeRegularStream(InputStream bodyStream, HttpHeaders headers) {
+		try {
+			this.WriteStatusLine(HttpStatus.OK);
+
+			headers.remove("Transfer-Encoding");
+			headers.remove("Trailer");
+			this.WriteHeaders(headers);
+
+			int n;
+			var buffer = new byte[1024];
+			while ((n = bodyStream.read(buffer)) != -1) {
+				if (n == 0) continue;
+
+				byte[] rawData = new byte[n];
+				System.arraycopy(buffer, 0, rawData, 0, n);
+				this.WriteBody(rawData);
+			}
+		} catch (IOException e) {
+			System.err.println(" -> Error writing regular stream: " + e.getMessage());
+			WriteErrorResponse();
+		}
+	}
+
+	public void writeChunkedStream(InputStream bodyStream, HttpHeaders headers) {
+		try {
+
+			this.WriteStatusLine(HttpStatus.OK);
+			headers.remove("Content-Length");
+			headers.set("Transfer-Encoding", "chunked");
+			headers.set("Content-Type", "text/plain");
+			headers.set("Trailer", "X-Content-SHA256, X-Content-Length");
+			this.WriteHeaders(headers);
+
+			var fullBody = new ByteArrayOutputStream();
+			int n;
+			var data = new byte[32];
+			while ((n = bodyStream.read(data)) != -1) {
+				if (n == 0) continue;
+				fullBody.write(data, 0, n);
+
+				var hexSize = Integer.toHexString(n) + "\r\n";
+				this.WriteBody(hexSize.getBytes());
+
+				var chunkData = new byte[n];
+				System.arraycopy(data, 0, chunkData, 0, n);
+				this.WriteBody(chunkData);
+				this.WriteBody("\r\n".getBytes());
+			}
+
+			this.WriteBody("0\r\n".getBytes()); 
+
+			var finalPayload = fullBody.toByteArray();
+			var digest = MessageDigest.getInstance("SHA-256");
+			var sha256Hex = HexFormat.of().formatHex(digest.digest(finalPayload));
+
+			String trailersBlock = "X-Content-SHA256: " + sha256Hex + "\r\n" +
+				"X-Content-Length: " + finalPayload.length + "\r\n" +
+				"\r\n";
+			this.WriteBody(trailersBlock.getBytes());
+
+		} catch (IOException | NoSuchAlgorithmException e) {
+			System.err.println(" -> Error writing response: " + e.getMessage());
+			WriteErrorResponse();
+		}
 	}
 
     public HttpHeaders DefaultHeaders(int contentLen) {

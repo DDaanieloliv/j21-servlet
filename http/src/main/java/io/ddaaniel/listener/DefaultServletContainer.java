@@ -1,5 +1,6 @@
 package io.ddaaniel.listener;
 
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -42,7 +43,17 @@ public class DefaultServletContainer {
 
 				String target = message.uri();
 				router.dispatch(target).ifPresentOrElse(
-						(response) -> writer.WriteResponse(response), 
+						(response) -> {
+							if (response.getBody() instanceof InputStream st) {
+								if (response.getHeaders().get("Content-Length") == null) {
+									writer.writeChunkedStream(st, response.getHeaders());
+								} else {
+									writer.writeRegularStream(st, response.getHeaders());
+								}
+							} else {
+								writer.WriteResponse(response);
+							}
+						}, 
 						() -> writer.WriteErrorResponse());
 
 			} catch (Exception e) {

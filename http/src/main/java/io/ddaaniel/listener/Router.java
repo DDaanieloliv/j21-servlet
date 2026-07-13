@@ -1,5 +1,6 @@
 package io.ddaaniel.listener;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +42,16 @@ public class Router {
 		Object rawResult = routeAction.get();
 		if (rawResult instanceof ResponseEntity) {
 			return Optional.of((ResponseEntity<?>) rawResult);
+		}
+
+		if (rawResult instanceof InputStream) {
+			var header = new HttpHeaders();
+			header.set("Connection", "close");
+			header.set("Content-Type", "application/octet-stream");
+			header.setContentLength(((InputStream) rawResult).available());
+
+			var res = new ResponseEntity<>(rawResult, header, HttpStatus.OK);
+			return Optional.of(res);
 		}
 
 		String bodyText = (rawResult != null) ? rawResult.toString() : "";
