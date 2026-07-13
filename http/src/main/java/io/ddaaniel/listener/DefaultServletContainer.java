@@ -44,11 +44,11 @@ public class DefaultServletContainer {
 				String target = message.uri();
 				router.dispatch(target).ifPresentOrElse(
 						(response) -> {
-							if (response.getBody() instanceof InputStream st) {
+							if (response.getBody() instanceof InputStream bin) {
 								if (response.getHeaders().get("Content-Length") == null) {
-									writer.writeChunkedStream(st, response.getHeaders());
+									writer.writeChunkedStream(bin, response.getHeaders());
 								} else {
-									writer.writeRegularStream(st, response.getHeaders());
+									writer.writeRegularStream(bin, response.getHeaders());
 								}
 							} else {
 								writer.WriteResponse(response);

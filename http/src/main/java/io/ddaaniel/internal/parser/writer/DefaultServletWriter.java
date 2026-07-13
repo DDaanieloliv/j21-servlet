@@ -44,7 +44,7 @@ public class DefaultServletWriter {
 	}
 
 	public void writeRegularStream(InputStream bodyStream, HttpHeaders headers) {
-		try {
+		try (bodyStream) {
 			this.WriteStatusLine(HttpStatus.OK);
 
 			headers.remove("Transfer-Encoding");
@@ -67,12 +67,14 @@ public class DefaultServletWriter {
 	}
 
 	public void writeChunkedStream(InputStream bodyStream, HttpHeaders headers) {
-		try {
+		try (bodyStream) {
 
 			this.WriteStatusLine(HttpStatus.OK);
 			headers.remove("Content-Length");
 			headers.set("Transfer-Encoding", "chunked");
-			headers.set("Content-Type", "text/plain");
+			if (headers.get("Content-Type") == null) {
+				headers.set("Content-Type", "text/plain");
+			}
 			headers.set("Trailer", "X-Content-SHA256, X-Content-Length");
 			this.WriteHeaders(headers);
 
