@@ -4,11 +4,11 @@ package io.ddaaniel.internal.parser.writer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
+import io.ddaaniel.core.httpEntity.ResponseEntity;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
-import io.ddaaniel.internal.support.httpEntity.ResponseEntity;
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
-import io.ddaaniel.internal.support.httpStatus.HttpStatusCode;
 
 
 

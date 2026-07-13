@@ -6,13 +6,12 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import io.ddaaniel.internal.parser.reader.HttpServletRequest;
+import io.ddaaniel.core.Handler;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.reader.DefaultServletReader;
 import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
-import io.ddaaniel.listener.mapper.Server;
-import io.ddaaniel.listener.pipe.Handler;
-import io.ddaaniel.listener.pipe.routing.Router;
+
 
 
 /**
@@ -24,11 +23,11 @@ public class DefaultServletContainer {
 
 	private final ExecutorService executor;
 
-	private final Server server;
+	private final DefaultServletEntity server;
 
 	public DefaultServletContainer() {
 		try {
-			this.server = new Server();
+			this.server = new DefaultServletEntity();
 			this.listener = ServerSocketChannel.open();
 			this.executor = Executors.newVirtualThreadPerTaskExecutor();
 		} catch (Exception e) {
@@ -79,12 +78,12 @@ public class DefaultServletContainer {
 		} catch (Exception e) { if (!server.closed) throw new RuntimeException(e); }
 	}
 
-	public void handleConnection(Server server, SocketChannel conn) {
+	public void handleConnection(DefaultServletEntity server, SocketChannel conn) {
 		try (conn) {
 			var reader = new DefaultServletReader(conn);
 			var writer = new DefaultServletWriter(conn);
 
-			HttpServletRequest message;		
+			DefaultHttpServletRequest message;		
 			try {
 				message = reader.processMessage();
 			} catch (Exception err) { 

@@ -1,10 +1,11 @@
-package io.ddaaniel.internal.support.httpEntity;
+package io.ddaaniel.core.httpEntity;
 
 import java.net.URI;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+
 
 
 /**

@@ -1,6 +1,6 @@
-package io.ddaaniel.internal.support.httpEntity;
+package io.ddaaniel.core.httpEntity;
 
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 
 /**
  * HttpEntity

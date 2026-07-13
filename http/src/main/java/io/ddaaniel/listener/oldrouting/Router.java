@@ -1,22 +1,22 @@
-package io.ddaaniel.listener.pipe.oldrouting;
+package io.ddaaniel.listener.oldrouting;
 
 
-import io.ddaaniel.internal.parser.reader.HttpServletRequest;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
-import io.ddaaniel.listener.pipe.oldrouting.handlers.HttpBinHandler;
-import io.ddaaniel.listener.pipe.oldrouting.handlers.MyProblemHandler;
-import io.ddaaniel.listener.pipe.oldrouting.handlers.VideoStreamHandler;
-import io.ddaaniel.listener.pipe.oldrouting.handlers.YourProblemHandler;
+import io.ddaaniel.listener.oldrouting.handlers.HttpBinHandler;
+import io.ddaaniel.listener.oldrouting.handlers.MyProblemHandler;
+import io.ddaaniel.listener.oldrouting.handlers.VideoStreamHandler;
+import io.ddaaniel.listener.oldrouting.handlers.YourProblemHandler;
 
 /**
  * Router
  */
 public abstract class Router {
 
-	public static void route(HttpServletRequest message, DefaultServletWriter writer) {
+	public static void route(DefaultHttpServletRequest message, DefaultServletWriter writer) {
 		var target = message.uri();
 		var headers = writer.DefaultHeaders(0);
 
@@ -39,7 +39,7 @@ public abstract class Router {
 
 
 
-	private static void handleNotFound(HttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
+	private static void handleNotFound(DefaultHttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
 		var errBody = FunHttp.respond404().getBytes();
 		headers.set("Content-Length", String.valueOf(errBody.length));
 		headers.set("Content-Type", "text/html");

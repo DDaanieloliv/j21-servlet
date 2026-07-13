@@ -42,7 +42,7 @@ public class DefaultServletReader {
 		}
 	}
 
-	public HttpServletRequest processMessage() {
+	public DefaultHttpServletRequest processMessage() {
 		var builder = new HttpRequestBuilder();
 
 		try {

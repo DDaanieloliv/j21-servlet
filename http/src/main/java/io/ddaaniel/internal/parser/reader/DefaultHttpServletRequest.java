@@ -1,12 +1,13 @@
 package io.ddaaniel.internal.parser.reader;
 
 import java.io.InputStream;
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
+
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 
 /**
- * HttpServletRequest
+ * DefaultHttpServletRequest
  */
-public record HttpServletRequest(
+public record DefaultHttpServletRequest(
 		String method, 
 		String uri, 
 		HttpHeaders headers, 
@@ -24,8 +25,8 @@ class HttpRequestBuilder {
 	public HttpHeaders headers() { return this.headers; }
 	public HttpRequestBuilder body(InputStream body) { this.body = body; return this; }
 
-	public HttpServletRequest build() {
-		return new HttpServletRequest(
+	public DefaultHttpServletRequest build() {
+		return new DefaultHttpServletRequest(
 				this.method, 
 				this.uri, 
 				this.headers, 

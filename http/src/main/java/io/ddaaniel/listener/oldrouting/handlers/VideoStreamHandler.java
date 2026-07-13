@@ -1,21 +1,21 @@
-package io.ddaaniel.listener.pipe.oldrouting.handlers;
+package io.ddaaniel.listener.oldrouting.handlers;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import io.ddaaniel.internal.parser.reader.HttpServletRequest;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 
 /**
  * VideoStreamHandler
  */
 public abstract class VideoStreamHandler {
 
-	public static void handleVideoStreaming(HttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
+	public static void handleVideoStreaming(DefaultHttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
 		var videoPath = Path
 				.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/src/main/java/io/ddaaniel/assets/video.mp4");
 		try (FileChannel fileChannel = FileChannel.open(videoPath, StandardOpenOption.READ)) {

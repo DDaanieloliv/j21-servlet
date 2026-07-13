@@ -1,12 +1,13 @@
-package io.ddaaniel.internal.support.httpEntity;
+package io.ddaaniel.core.httpEntity;
 
 import java.net.URI;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
-import io.ddaaniel.internal.support.httpStatus.HttpStatusCode;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.core.httpStatus.HttpStatusCode;
+
 
 
 /**

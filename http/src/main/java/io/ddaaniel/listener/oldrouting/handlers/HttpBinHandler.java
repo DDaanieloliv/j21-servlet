@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.pipe.oldrouting.handlers;
+package io.ddaaniel.listener.oldrouting.handlers;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -9,9 +9,9 @@ import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.reader.HttpServletRequest;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 
 /**
@@ -19,7 +19,7 @@ import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
  */
 public abstract class HttpBinHandler {
 
-	public static void HttpStreamRes(HttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
+	public static void HttpStreamRes(DefaultHttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
 		var target = message.uri();
 		HttpClient client = HttpClient.newHttpClient();
 		var reqOut = HttpRequest.newBuilder()

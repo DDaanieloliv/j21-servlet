@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.support.httpEntity.httpHeaders;
+package io.ddaaniel.core.httpEntity.httpHeaders;
 
 import java.net.InetSocketAddress;
 import java.net.URI;

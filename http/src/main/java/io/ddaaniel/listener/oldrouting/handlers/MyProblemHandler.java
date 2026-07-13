@@ -1,17 +1,17 @@
-package io.ddaaniel.listener.pipe.oldrouting.handlers;
+package io.ddaaniel.listener.oldrouting.handlers;
 
-import io.ddaaniel.internal.parser.reader.HttpServletRequest;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
-import io.ddaaniel.internal.support.httpEntity.httpHeaders.HttpHeaders;
-import io.ddaaniel.internal.support.httpStatus.HttpStatus;
 
 /**
  * MyProblemHandler
  */
 public abstract class MyProblemHandler {
 
-	public static void handleMyProblem(HttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
+	public static void handleMyProblem(DefaultHttpServletRequest message, HttpHeaders headers, DefaultServletWriter writer) throws Exception {
 		var body = FunHttp.respond500().getBytes();
 		headers.set("Content-Length", String.valueOf(body.length));
 		headers.set("Content-Type", "text/html");

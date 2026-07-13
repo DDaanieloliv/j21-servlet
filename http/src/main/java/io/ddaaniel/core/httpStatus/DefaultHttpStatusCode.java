@@ -1,4 +1,4 @@
-package io.ddaaniel.internal.support.httpStatus;
+package io.ddaaniel.core.httpStatus;
 
 /**
  * DefaultHttpStatusCode
