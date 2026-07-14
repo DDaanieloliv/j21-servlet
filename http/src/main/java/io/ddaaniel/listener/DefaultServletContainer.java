@@ -51,7 +51,7 @@ public class DefaultServletContainer {
 									writer.writeRegularStream(bin, response.getHeaders());
 								}
 							} else {
-								writer.WriteResponse(response);
+								writer.writeResponse(response);
 							}
 						}, 
 						() -> writer.WriteErrorResponse());

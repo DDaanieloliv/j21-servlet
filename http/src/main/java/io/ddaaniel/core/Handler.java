@@ -2,12 +2,12 @@ package io.ddaaniel.core;
 
 
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
-import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
+import io.ddaaniel.internal.parser.writer.HttpServletWriter;
 
 
 @FunctionalInterface
 public interface Handler {
-    void get(DefaultHttpServletRequest m, DefaultServletWriter w);
+    void get(DefaultHttpServletRequest m, HttpServletWriter w);
 }
 
 
