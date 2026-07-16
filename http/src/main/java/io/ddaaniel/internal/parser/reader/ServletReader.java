@@ -9,9 +9,9 @@ import io.ddaaniel.internal.exception.URITooLongException;
 
 
 /**
- * DefaultServletReader
+ * ServletReader
  */
-public class DefaultServletReader {
+public class ServletReader implements HttpReader {
 
 	private HttpProtocol http;
 
@@ -20,20 +20,16 @@ public class DefaultServletReader {
 	private ReadableByteChannel stream;
 
 
-	public DefaultServletReader(ReadableByteChannel stream, HttpProtocol parser) {
+	public ServletReader(ReadableByteChannel stream, HttpProtocol parser) {
 		this.http = parser;
 		this.stream = stream;
 		this.buffer = new NetworkBuffer();
 	}
 
-	public DefaultServletReader(ReadableByteChannel stream) {
-		this.http = new DefaultHttp11ProtocolParser(stream);
+	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
 		this.buffer = new NetworkBuffer();
-	}
-
-	private boolean isAvailable() {
-		return !http.isTerminated() && !http.isFailed();
+		this.http = new HttpProtocolParser(stream);
 	}
 
 	private void assertEnd() {
@@ -42,11 +38,17 @@ public class DefaultServletReader {
 		}
 	}
 
+	@Override
+	public boolean canRead() {
+		return !http.isTerminated() && !http.isFailed();
+	}
+
+	@Override
 	public DefaultHttpServletRequest processMessage() {
 		var builder = new HttpRequestBuilder();
 
 		try {
-			while (isAvailable()) {
+			while (canRead()) {
 				if (buffer.readFrom(stream) == -1) {
 					buffer.forceFlipForBody();
 					assertEnd();

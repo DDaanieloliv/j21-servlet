@@ -9,7 +9,7 @@ import java.util.concurrent.Executors;
 import io.ddaaniel.core.Handler;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
-import io.ddaaniel.internal.parser.reader.DefaultServletReader;
+import io.ddaaniel.internal.parser.reader.ServletReader;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 
@@ -41,7 +41,8 @@ public class DefaultServletContainer {
 			try {
 
 				String target = message.uri();
-				router.dispatch(target).ifPresentOrElse(
+				String method = message.method();
+				router.dispatch(method, target).ifPresentOrElse(
 						(response) -> {
 							try {
 								writer.writeResponse(response);
@@ -52,7 +53,7 @@ public class DefaultServletContainer {
 						() -> writer.writeErrorResponse(HttpStatus.NOT_FOUND));
 
 			} catch (Exception e) {
-				System.err.println(" -> Router Error: " + e.getMessage());
+				System.err.println(" -> Error when routing: " + e.getMessage());
 				try {
 					writer.writeErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR);
 				} catch (Exception ignored) {}
@@ -85,7 +86,7 @@ public class DefaultServletContainer {
 
 	public void handleConnection(DefaultServletEntity server, SocketChannel conn) {
 		try (conn) {
-			var reader = new DefaultServletReader(conn);
+			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
 
 			DefaultHttpServletRequest message;		

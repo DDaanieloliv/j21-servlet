@@ -10,7 +10,7 @@ import io.ddaaniel.core.httpStatus.HttpStatus;
  */
 public abstract class YourProblemController {
 
-	@HTTP("/yourproblem")
+	@HTTP(method = "GET", path = "/yourproblem")
 	public static ResponseEntity<?> handleYourProblem() throws Exception {
 		var body = 
 			"<html>" +

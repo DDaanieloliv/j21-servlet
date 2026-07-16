@@ -15,7 +15,7 @@ public class ServletWriter implements HttpServletWriter {
 
 	private final WritableByteChannel channel;
 
-	private static final List<HttpWriterMatcher> strategies = List.of(
+	private static final List<HttpWriterConduct> strategies = List.of(
 		new ChunkedServletWriter(),
 		new DefaultServletWriter()
 	);
@@ -31,7 +31,7 @@ public class ServletWriter implements HttpServletWriter {
 
 	@Override
 	public void writeResponse(ResponseEntity<?> response) throws Exception {
-		for (HttpWriterMatcher strategy : strategies) {
+		for (HttpWriterConduct strategy : strategies) {
 			if (strategy.matches(response)) {
 				strategy.write(channel, response);
 				return;
@@ -61,7 +61,7 @@ public class ServletWriter implements HttpServletWriter {
 					.getBytes();
 			}
 
-			String statusStr = String.format("HTTP/1.1 %d %s\r\n", status.value(), status.toString());
+			String statusStr = String.format("HTTP/1.1 %s\r\n", status.toString());
             String headersStr = "Content-Length: " + errorBody.length + "\r\n" +
                                 "Connection: close\r\n" +
                                 "Content-Type: text/html; charset=UTF-8\r\n\r\n";

@@ -1,9 +1,8 @@
 package io.ddaaniel.user.controller;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 
 import io.ddaaniel.annotations.HTTP;
 import io.ddaaniel.core.httpEntity.ResponseEntity;
@@ -15,25 +14,18 @@ import io.ddaaniel.core.httpStatus.HttpStatus;
  */
 public abstract class HttpBinStreamController {
 
-	@HTTP("/stream")
+	@HTTP(method = "GET", path = "/stream")
 	public static ResponseEntity<?> HttpStreamRes() throws Exception {
-		HttpClient client = HttpClient.newHttpClient();
-		var reqOut = HttpRequest.newBuilder()
-			.uri(URI.create("https://httpbin.org/stream/5"))
-			.GET()
-			.build();
-		var resOut = client.send(reqOut, HttpResponse.BodyHandlers.ofInputStream());
-
+		byte[] mockdata = "[this is a test data to chunked-encoding behavior]".getBytes(StandardCharsets.UTF_8);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		for (int i = 0; i < 300000; i++) {
+			baos.write(mockdata, 0, mockdata.length);
+		}
+		
+		var resOut = new ByteArrayInputStream(baos.toByteArray());
         var headers = new HttpHeaders();
-        
-		String contentType = resOut.headers().firstValue("Content-Type").orElse("application/json");
-		headers.set("Content-Type", contentType);
+		headers.set("Content-Type", "plain/text");
 
-		resOut.headers().firstValue("Content-Length")
-			.ifPresent(length -> headers.set("Content-Length", length));
-
-		var upstreamStatus = HttpStatus.valueOf(resOut.statusCode());
-
-		return new ResponseEntity<>(resOut.body(), headers, upstreamStatus);
+		return new ResponseEntity<>(resOut, headers, HttpStatus.OK);
 	}
 }

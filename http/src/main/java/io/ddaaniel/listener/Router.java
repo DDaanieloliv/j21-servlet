@@ -29,12 +29,14 @@ public class Router {
         }
     }
 
-	public Optional<ResponseEntity<?>>dispatch(String targetPath) throws Exception {
-		if (targetPath.isEmpty() || targetPath.isEmpty()) {
-			System.err.println(" -> Error to obtain the request-target, target should contain a value ");
+	public Optional<ResponseEntity<?>>dispatch(String method, String targetPath) throws Exception {
+		if (method == null || targetPath.isEmpty() || method.isEmpty() || targetPath.isEmpty()) {
+			System.err.println(" -> Error to obtain the routing arguments ");
 			return Optional.empty();
 		}
-		Supplier<Object> routeAction = compiledTable.get(targetPath);
+		String routeKey = method.toUpperCase() + " " + targetPath;
+
+		Supplier<Object> routeAction = compiledTable.get(routeKey);
 		if (routeAction == null) {
 			return Optional.empty();
 		}

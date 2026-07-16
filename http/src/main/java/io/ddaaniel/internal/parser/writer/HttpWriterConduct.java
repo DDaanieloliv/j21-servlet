@@ -5,9 +5,9 @@ import java.nio.channels.WritableByteChannel;
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 
 /**
- * HttpWriterMatcher
+ * HttpWriterConduct
  */
-public interface HttpWriterMatcher {
+public interface HttpWriterConduct {
 
 	boolean matches(ResponseEntity<?> response);
 

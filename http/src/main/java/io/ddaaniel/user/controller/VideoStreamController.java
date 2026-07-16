@@ -15,7 +15,7 @@ import io.ddaaniel.core.httpStatus.HttpStatus;
  */
 public class VideoStreamController {
 
-	@HTTP("/videoStream")
+	@HTTP(method = "GET", path = "/videoStream")
 	public static ResponseEntity<?> handleVideoStreaming() throws Exception {
 		var videoPath = Path
 				.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/http/src/main/java/io/ddaaniel/user/assets/video.mp4");
@@ -25,7 +25,7 @@ public class VideoStreamController {
 		return new ResponseEntity<>(vInputStream, headers, HttpStatus.OK);
 	}
 	
-	@HTTP("/video")
+	@HTTP(method = "GET", path = "/video")
 	public static ResponseEntity<?> playVideo() throws Exception {
 		var videoPath = Path
 				.of("/home/daniel/DEV_ENV/personal/dev/httpfromtcp/http/src/main/java/io/ddaaniel/user/assets/video.mp4");

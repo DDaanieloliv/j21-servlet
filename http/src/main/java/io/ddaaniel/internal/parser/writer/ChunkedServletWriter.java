@@ -12,7 +12,7 @@ import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 /**
  * ChunkedServletWriter
  */
-public class ChunkedServletWriter implements HttpWriterMatcher {
+public class ChunkedServletWriter implements HttpWriterConduct {
 
 	@Override
 	public boolean matches(ResponseEntity<?> response) {
@@ -36,7 +36,7 @@ public class ChunkedServletWriter implements HttpWriterMatcher {
 			headers.set("Content-Type", "application/octet-stream");
 		}
 
-		String statusStr = String.format("HTTP/1.1 %d %s\r\n", response.getStatusCode().value(), response.getStatusCode().toString());
+		String statusStr = String.format("HTTP/1.1 %s\r\n", response.getStatusCode().toString());
 		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
 
 		var sb = new StringBuilder();

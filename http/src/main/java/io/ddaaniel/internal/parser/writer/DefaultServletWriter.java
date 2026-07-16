@@ -9,7 +9,7 @@ import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 
 
-public class DefaultServletWriter implements HttpWriterMatcher {
+public class DefaultServletWriter implements HttpWriterConduct {
 
 	@Override
 	public boolean matches(ResponseEntity<?> response) {
@@ -46,7 +46,7 @@ public class DefaultServletWriter implements HttpWriterMatcher {
 	}
 
 	private void writeStatus(WritableByteChannel channel, ResponseEntity<?> res) throws Exception {
-		String statusStr = String.format("HTTP/1.1 %d %s\r\n", res.getStatusCode().value(), res.getStatusCode().toString());
+		String statusStr = String.format("HTTP/1.1 %s\r\n", res.getStatusCode().toString());
 		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
 	}
 
