@@ -1,6 +1,5 @@
 package io.ddaaniel.listener;
 
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -11,7 +10,7 @@ import io.ddaaniel.core.Handler;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.reader.DefaultServletReader;
-import io.ddaaniel.internal.parser.writer.DefaultServletWriter;
+import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 
 
@@ -44,23 +43,18 @@ public class DefaultServletContainer {
 				String target = message.uri();
 				router.dispatch(target).ifPresentOrElse(
 						(response) -> {
-							if (response.getBody() instanceof InputStream bin) {
-								if (response.getHeaders().get("Content-Length") == null) {
-									writer.writeChunkedStream(bin, response.getHeaders());
-								} else {
-									writer.writeRegularStream(bin, response.getHeaders());
-								}
-							} else {
+							try {
 								writer.writeResponse(response);
+							} catch (Exception e) {
+								throw new RuntimeException(" -> Error when writing response ", e);
 							}
-						}, 
-						() -> writer.WriteErrorResponse());
+						},
+						() -> writer.writeErrorResponse(HttpStatus.NOT_FOUND));
 
 			} catch (Exception e) {
 				System.err.println(" -> Router Error: " + e.getMessage());
 				try {
-					writer.WriteStatusLine(HttpStatus.INTERNAL_SERVER_ERROR);
-					writer.WriteHeaders(writer.DefaultHeaders(0));
+					writer.writeErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR);
 				} catch (Exception ignored) {}
 			}
 			return;
@@ -92,15 +86,13 @@ public class DefaultServletContainer {
 	public void handleConnection(DefaultServletEntity server, SocketChannel conn) {
 		try (conn) {
 			var reader = new DefaultServletReader(conn);
-			var writer = new DefaultServletWriter(conn);
+			var writer = new ServletWriter(conn);
 
 			DefaultHttpServletRequest message;		
 			try {
 				message = reader.processMessage();
 			} catch (Exception err) { 
-				var badRequestHeaders = writer.DefaultHeaders(0);
-				writer.WriteStatusLine(HttpStatus.BAD_REQUEST);
-				writer.WriteHeaders(badRequestHeaders);
+				writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
 				return;
 			}
 			server.forward.get(message, writer);

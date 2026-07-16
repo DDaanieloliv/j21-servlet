@@ -2,38 +2,58 @@ package io.ddaaniel.internal.parser.writer;
 
 
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 
 
-public class DefaultServletWriter extends AbstractHttpServletWriter {
+public class DefaultServletWriter implements HttpWriterMatcher {
 
-	public DefaultServletWriter(WritableByteChannel channel) {
-		super(channel);
+	@Override
+	public boolean matches(ResponseEntity<?> response) {
+		return true;
 	}
 
 	@Override
-	public boolean canWrite(ResponseEntity<?> response) {
-		return response.getBody() == null || !(response.getBody() instanceof InputStream);
-	}
-
-	@Override
-	public void writeResponse(ResponseEntity<?> response) {
+	public void write(WritableByteChannel channel, ResponseEntity<?> response) throws Exception {
 		Object body = response.getBody();
-        byte[] rawBody = body != null ? body.toString().getBytes() : new byte[0];
-        HttpHeaders headers = response.getHeaders() != null ? response.getHeaders() : new HttpHeaders();
+		HttpHeaders headers = response.getHeaders() != null ? response.getHeaders() : new HttpHeaders();
+		 
+		if (body instanceof InputStream bodyStream) {
+			writeStatus(channel, response);
+			writeHeaders(channel, headers);
+			try (bodyStream) {
+				var data = new byte[8192];
+				int n;
+				while ((n = bodyStream.read(data)) != -1) {
+					channel.write(ByteBuffer.wrap(data, 0, n));
+				}
+			}
+		} else {
+			byte[] rawBody = body != null ? body.toString().getBytes() : new byte[0];
+			if (headers.get("Content-Length") == null) {
+				headers.set("Content-Length", String.valueOf(rawBody.length));
+			}
+			if (headers.get("Content-Type") == null) {
+				headers.set("Content-Type", "text/plain");
+			}
+			writeStatus(channel, response);
+			writeHeaders(channel, headers);
+			channel.write(ByteBuffer.wrap(rawBody));
+		}
+	}
 
-        if (headers.get("Content-Length") == null) {
-            headers.set("Content-Length", String.valueOf(rawBody.length));
-        }
-        if (headers.get("Content-Type") == null) {
-            headers.set("Content-Type", "text/plain");
-        }
+	private void writeStatus(WritableByteChannel channel, ResponseEntity<?> res) throws Exception {
+		String statusStr = String.format("HTTP/1.1 %d %s\r\n", res.getStatusCode().value(), res.getStatusCode().toString());
+		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
+	}
 
-        this.writeStatusLine(response.getStatusCode());
-        this.writeHeaders(headers);
-        this.writeRawBytes(rawBody);
+	private void writeHeaders(WritableByteChannel channel, HttpHeaders headers) throws Exception {
+		var sb = new StringBuilder();
+		headers.forEach((k, v) -> sb.append(k).append(": ").append(String.join(", ", v)).append("\r\n"));
+		sb.append("\r\n");
+		channel.write(ByteBuffer.wrap(sb.toString().getBytes()));
 	}
 }

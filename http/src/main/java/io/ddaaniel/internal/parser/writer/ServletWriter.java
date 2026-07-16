@@ -1,0 +1,76 @@
+package io.ddaaniel.internal.parser.writer;
+
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
+import java.util.List;
+
+import io.ddaaniel.core.httpEntity.ResponseEntity;
+import io.ddaaniel.core.httpStatus.HttpStatusCode;
+import io.ddaaniel.internal.support.HttpFun.FunHttp;
+
+/**
+ * ServletWriter
+ */
+public class ServletWriter implements HttpServletWriter {
+
+	private final WritableByteChannel channel;
+
+	private static final List<HttpWriterMatcher> strategies = List.of(
+		new ChunkedServletWriter(),
+		new DefaultServletWriter()
+	);
+
+	public ServletWriter(WritableByteChannel channel) {
+        this.channel = channel;
+    }
+
+	@Override
+	public WritableByteChannel channel() { 
+		return this.channel;
+	}
+
+	@Override
+	public void writeResponse(ResponseEntity<?> response) throws Exception {
+		for (HttpWriterMatcher strategy : strategies) {
+			if (strategy.matches(response)) {
+				strategy.write(channel, response);
+				return;
+			}
+		}
+		throw new IllegalStateException(" -> No HTTP writers supports its response ");
+	}
+
+	@Override
+	public void writeErrorResponse(HttpStatusCode status) {
+		try {
+            byte[] errorBody;
+            try {
+                errorBody = FunHttp.respond404().getBytes();
+            } catch (Exception e) {
+				errorBody = 
+					("<html>" +
+					 "<head>" +
+					 "<title>400 Bad Request</title>" +
+					 "</head>" +
+					 "<body>" +
+					 "<h1>Bad Request</h1>" +
+					 "<p>Your request honestly kinda sucked.</p>" +
+					 "</body>" +
+					 "</html>" +
+					 "\n")
+					.getBytes();
+			}
+
+			String statusStr = String.format("HTTP/1.1 %d %s\r\n", status.value(), status.toString());
+            String headersStr = "Content-Length: " + errorBody.length + "\r\n" +
+                                "Connection: close\r\n" +
+                                "Content-Type: text/html; charset=UTF-8\r\n\r\n";
+
+            channel.write(ByteBuffer.wrap(statusStr.getBytes()));
+            channel.write(ByteBuffer.wrap(headersStr.getBytes()));
+            channel.write(ByteBuffer.wrap(errorBody));
+        } catch (Exception e) {
+            throw new RuntimeException(" -> Critical Error when send error response ", e);
+        }
+	}
+}
