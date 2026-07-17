@@ -5,6 +5,8 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import io.ddaaniel.core.Handler;
 import io.ddaaniel.core.httpStatus.HttpStatus;
@@ -25,6 +27,8 @@ public class DefaultServletContainer {
 
 	private final DefaultServletEntity server;
 
+	private static final Logger log = Logger.getLogger(DefaultServletContainer.class.getName());
+
 	public DefaultServletContainer() {
 		try {
 			this.server = new DefaultServletEntity();
@@ -42,21 +46,25 @@ public class DefaultServletContainer {
 
 				String target = message.uri();
 				String method = message.method();
+				log.info(String.format(" -> Routing Request: %s %s", method, target));
+
 				router.dispatch(method, target).ifPresentOrElse(
 						(response) -> {
 							try {
 								writer.writeResponse(response);
 							} catch (Exception e) {
-								throw new RuntimeException(" -> Error when writing response ", e);
+								log.log(Level.WARNING, " -> Error when writing response ", e);
 							}
 						},
 						() -> writer.writeErrorResponse(HttpStatus.NOT_FOUND));
 
 			} catch (Exception e) {
-				System.err.println(" -> Error when routing: " + e.getMessage());
+				log.log(Level.SEVERE, " -> Error when routing: " + e.getMessage(), e);
 				try {
 					writer.writeErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR);
-				} catch (Exception ignored) {}
+				} catch (Exception ignored) {
+					log.log(Level.SEVERE, " -> Error when writing error-response: " + e.getMessage(), e);
+				}
 			}
 			return;
 		});
@@ -67,6 +75,7 @@ public class DefaultServletContainer {
 		server.closed = false;
 		server.forward = handler;
 		this.listener.bind(new InetSocketAddress(port));
+		log.info(" -> Server boundary socket bound successfully to port: " + port);
 		executor.submit(() -> { runServer(listener); });
 		return this;
 	}
@@ -81,7 +90,11 @@ public class DefaultServletContainer {
 				}
 				executor.submit(() -> { handleConnection(server, socketChannel); });
 			}
-		} catch (Exception e) { if (!server.closed) throw new RuntimeException(e); }
+		} catch (Exception e) { 
+			if (!server.closed) {
+				log.log(Level.SEVERE, " -> Fatal crash in main TCP accept loop! Server stopped accepting connections. ", e);
+			}
+		}
 	}
 
 	public void handleConnection(DefaultServletEntity server, SocketChannel conn) {
@@ -93,13 +106,15 @@ public class DefaultServletContainer {
 			try {
 				message = reader.processMessage();
 			} catch (Exception err) { 
+				log.log(Level.FINE, " -> Bad request payload received from client: ", err);
 				writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
 				return;
 			}
 			server.forward.get(message, writer);
+			log.info(" -> forwarding message to connection");
 		} catch (Exception e) {
 			if (!server.closed) { 
-				System.err.println(" -> Error in connection: " + e.getMessage()); 
+				log.log(Level.SEVERE, " -> Error handling client connection lifecycle: " + e.getMessage(), e); 
 			}
 		}
 	}
@@ -109,8 +124,9 @@ public class DefaultServletContainer {
 			server.closed = true;
 			if (listener != null && listener.isOpen()) listener.close();
 			executor.shutdown();
+			log.info("ServletContainer shutdown executed cleanly.");
 		} catch (Exception e) { 
-			System.err.println(" -> Error when closing server: " + e.getMessage());
+			log.log(Level.SEVERE, " -> Error when closing server: ", e);
 		}
 	}
 }
