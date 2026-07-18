@@ -20,7 +20,7 @@ public class Main {
 
 		try {
 			ServletContainer s = new DefaultServletContainer().hookUp(port);
-			log.info(" -> Server started on port 42069 ");
+			log.info(" -> Server started on port " + port);
 
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				log.info(" -> Signal received! Initiating graceful shutdown...");

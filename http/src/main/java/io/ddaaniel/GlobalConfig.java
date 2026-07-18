@@ -31,37 +31,15 @@ public class GlobalConfig {
 				rootLogger.removeHandler(h);
 			}
 
-			Formatter customFormatter = new Formatter() {
 
-				@Override
-				public String format(LogRecord record) {
-					String logMessage = String.format("[%tF %<tT] [Thread-%d] [%s] [%s#%s]: %s%n",
-							record.getMillis(),
-							record.getLongThreadID(),
-							record.getLevel(),
-							record.getLoggerName(),
-							record.getSourceMethodName(),
-							record.getMessage()
-							);
-
-					if (record.getThrown() != null) {
-						StringWriter sw = new StringWriter();
-						PrintWriter pw = new PrintWriter(sw);
-						pw.println();
-						record.getThrown().printStackTrace(pw);
-						logMessage += sw.toString() + "\n";
-					}
-					return logMessage;
-				}
-			};
-
+			Formatter formatter = new DefaultLoggingFormatter();
 			ConsoleHandler console = new ConsoleHandler();
-			console.setFormatter(customFormatter);
+			console.setFormatter(formatter);
 			rootLogger.addHandler(console);
 
-			String logFile = PROPERTIES.getProperty("log.file", "server.log");
+			String logFile = PROPERTIES.getProperty("log.file", "servlet.log");
 			FileHandler file = new FileHandler(logFile, true);
-			file.setFormatter(customFormatter);
+			file.setFormatter(formatter);
 			rootLogger.addHandler(file);
 
 		} catch (Exception e) {
@@ -79,5 +57,33 @@ public class GlobalConfig {
 
 	public static int getPort() {
 		return port;
+	}
+}
+
+
+/**
+ * DefaultLoggingFormatter
+ */
+class DefaultLoggingFormatter extends Formatter {
+
+	@Override
+	public String format(LogRecord record) {
+		String logMessage = String.format("[%tF %<tT] [Thread-%d] [%s] [%s#%s]: %s%n",
+				record.getMillis(),
+				record.getLongThreadID(),
+				record.getLevel(),
+				record.getLoggerName(),
+				record.getSourceMethodName(),
+				record.getMessage()
+				);
+
+		if (record.getThrown() != null) {
+			StringWriter sw = new StringWriter();
+			PrintWriter pw = new PrintWriter(sw);
+			pw.println();
+			record.getThrown().printStackTrace(pw);
+			logMessage += sw.toString() + "\n";
+		}
+		return logMessage;
 	}
 }
