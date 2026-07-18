@@ -5,6 +5,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,19 +20,20 @@ import io.ddaaniel.internal.parser.writer.ServletWriter;
 /**
  * DefaultServletContainer
  */
-public class DefaultServletContainer {
+public class DefaultServletContainer implements ServletContainer {
 
-	private final ServerSocketChannel listener;
+	private Handler handler;
 
 	private final ExecutorService executor;
 
-	private final DefaultServletEntity server;
+	private final ServerSocketChannel listener;
+
+	private final AtomicBoolean closed = new AtomicBoolean(false);
 
 	private static final Logger log = Logger.getLogger(DefaultServletContainer.class.getName());
 
 	public DefaultServletContainer() {
 		try {
-			this.server = new DefaultServletEntity();
 			this.listener = ServerSocketChannel.open();
 			this.executor = Executors.newVirtualThreadPerTaskExecutor();
 		} catch (Exception e) {
@@ -39,6 +41,7 @@ public class DefaultServletContainer {
 		}
 	}
 
+	@Override
 	public DefaultServletContainer hookUp(int port) throws Exception {
 		var router = new Router();
 		this.attach(port, (message, writer) -> {
@@ -71,9 +74,10 @@ public class DefaultServletContainer {
 		return this;
 	}
 
+	@Override
 	public DefaultServletContainer attach(int port, Handler handler) throws Exception {
-		server.closed = false;
-		server.forward = handler;
+		this.closed.set(false);
+		this.handler = handler;
 		this.listener.bind(new InetSocketAddress(port));
 		log.info(" -> Server boundary socket bound successfully to port: " + port);
 		executor.submit(() -> { runServer(listener); });
@@ -82,22 +86,22 @@ public class DefaultServletContainer {
 
 	public void runServer(ServerSocketChannel listener) {
 		try {
-			while (listener.isOpen() && !server.closed) {
+			while (listener.isOpen() && !closed.get()) {
 				var socketChannel = listener.accept();
-				if (server.closed) {
+				if (closed.get()) {
 					if (socketChannel != null) socketChannel.close();
 					return;
 				}
-				executor.submit(() -> { handleConnection(server, socketChannel); });
+				executor.submit(() -> { handleConnection(socketChannel); });
 			}
 		} catch (Exception e) { 
-			if (!server.closed) {
+			if (!closed.get()) {
 				log.log(Level.SEVERE, " -> Fatal crash in main TCP accept loop! Server stopped accepting connections. ", e);
 			}
 		}
 	}
 
-	public void handleConnection(DefaultServletEntity server, SocketChannel conn) {
+	public void handleConnection(SocketChannel conn) {
 		try (conn) {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
@@ -110,18 +114,19 @@ public class DefaultServletContainer {
 				writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
 				return;
 			}
-			server.forward.get(message, writer);
+			handler.get(message, writer);
 			log.info(" -> forwarding message to connection");
 		} catch (Exception e) {
-			if (!server.closed) { 
+			if (!closed.get()) { 
 				log.log(Level.SEVERE, " -> Error handling client connection lifecycle: " + e.getMessage(), e); 
 			}
 		}
 	}
 
-	public void Close() {
+	@Override
+	public void close() {
 		try {
-			server.closed = true;
+			closed.set(true);
 			if (listener != null && listener.isOpen()) listener.close();
 			executor.shutdown();
 			log.info("ServletContainer shutdown executed cleanly.");
