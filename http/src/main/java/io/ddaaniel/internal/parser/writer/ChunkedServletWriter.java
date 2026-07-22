@@ -70,7 +70,7 @@ public class ChunkedServletWriter implements HttpWriterConduct {
 			channel.write(ByteBuffer.wrap("0\r\n".getBytes()));
 
 			var sha256Hex = HexFormat.of().formatHex(digest.digest());
-			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, "Chunked transfer complete. Total bytes: {0}, SHA-256: {1}", new Object[]{totalBytes, sha256Hex});
+			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Chunked transfer complete. Total bytes: {0}, SHA-256: {1}", new Object[]{totalBytes, sha256Hex});
 			String trailersBlock = "X-Content-SHA256: " + sha256Hex + "\r\n" +
 				"X-Content-Length: " + totalBytes + "\r\n" +
 				"\r\n";

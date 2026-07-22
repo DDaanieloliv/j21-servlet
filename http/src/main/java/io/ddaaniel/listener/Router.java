@@ -1,6 +1,5 @@
 package io.ddaaniel.listener;
 
-import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
@@ -11,10 +10,9 @@ import java.util.logging.Logger;
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.support.serializer.SerializationManager;
-
-
 
 
 
@@ -43,44 +41,50 @@ public class Router {
 			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Error to obtain the routing arguments ");
 			return Optional.empty();
 		}
-		String routeKey = message.method().toUpperCase() + " " + message.uri();
 
+		String routeKey = message.method().toUpperCase() + " " + message.uri();
 		Supplier<Object> routeAction = compiledTable.get(routeKey);
+
 		if (routeAction == null) {
-			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> No route-action found to respective route-key: ", routeKey );
+			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> no route-action found to respective route-key: ", routeKey );
 			return Optional.empty();
 		}
 
 		Object rawResult = routeAction.get();
-		if (rawResult instanceof ResponseEntity rEntity) {
-			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Routing successfully completed, obtained response as Object ");
-			ensureConnectionHeader(message, rEntity.getHeaders());
-			return Optional.of(rEntity);
-		}
 
-		if (rawResult instanceof InputStream) {
-			var header = new HttpHeaders();
-			ensureConnectionHeader(message, header);
-			header.set("Content-Type", "application/octet-stream");
-			header.setContentLength(((InputStream) rawResult).available());
+		Object body = rawResult;
+        HttpHeaders headers = new HttpHeaders();
+        HttpStatusCode status = HttpStatus.OK;
 
-			var res = new ResponseEntity<>(rawResult, header, HttpStatus.OK);
+        if (rawResult instanceof ResponseEntity<?> rEntity) {
+            body = rEntity.getBody();
+            if (rEntity.getHeaders() != null) {
+                headers = rEntity.getHeaders();
+            }
+            if (rEntity.getStatusCode() != null) {
+                status = rEntity.getStatusCode();
+            }
+        }
 
-			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Routing successfully completed, obtained response as InputStream ");
-			return Optional.of(res);
-		}
+		String existingContentType = headers.getFirst("Content-Type");
 
-		var result = SERIALIZER.convert(rawResult, null);
+        var serialized = SERIALIZER.convert(body, existingContentType);
 
-		var header = new HttpHeaders();
-		header.set("Content-Length", String.valueOf(result.data().length));
-		ensureConnectionHeader(message, header);
-		header.set("Content-Type", "text/plain");
-		var res = new ResponseEntity<>(result.data(), header, HttpStatus.OK);
+        ensureConnectionHeader(message, headers);
+        
+        if (headers.get("Content-Type") == null) {
+            headers.set("Content-Type", serialized.contentType());
+        }
 
-		if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Routing successfully completed, obtained response as Text ");
-		return Optional.of(res);
+        headers.set("Content-Length", String.valueOf(serialized.data().length));
+
+        if (log.isLoggable(Level.FINE)) {
+            log.log(Level.INFO, " -> routing successfully completed for route-key: [{0}] ", routeKey);
+        }
+
+        return Optional.of(new ResponseEntity<>(serialized.data(), headers, status));
 	}
+
 
 	private void ensureConnectionHeader(DefaultHttpServletRequest message, HttpHeaders headers) {
 		if (headers.get("Connection") == null) {

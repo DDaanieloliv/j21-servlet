@@ -118,28 +118,28 @@
 			  </configuration>
 		  </plugin>
 
-		  <plugin>
-			  <groupId>org.graalvm.buildtools</groupId>
-			  <artifactId>native-maven-plugin</artifactId>
-			  <version>0.10.2</version>
-			  <executions>
-				  <execution>
-					  <id>build-native</id>
-					  <goals>
-						  <goal>compile-no-fork</goal>
-					  </goals>
-					  <phase>package</phase>
-				  </execution>
-			  </executions>
-			  <configuration>
-				  <imageName>httpfromtcp-teste</imageName>
-				  <mainClass>io.ddaaniel.Main</mainClass> 
-				  <buildArgs>
-					  <buildArg>-O4</buildArg>
-					  <buildArg>--no-fallback</buildArg>
-				  </buildArgs>
-			  </configuration>
-		  </plugin>
+		  <!-- <plugin> -->
+		  <!--     <groupId>org.graalvm.buildtools</groupId> -->
+		  <!--     <artifactId>native-maven-plugin</artifactId> -->
+		  <!--     <version>0.10.2</version> -->
+		  <!--     <executions> -->
+		  <!--   	  <execution> -->
+		  <!--   		  <id>build-native</id> -->
+		  <!--   		  <goals> -->
+		  <!--   			  <goal>compile-no-fork</goal> -->
+		  <!--   		  </goals> -->
+		  <!--   		  <phase>package</phase> -->
+		  <!--   	  </execution> -->
+		  <!--     </executions> -->
+		  <!--     <configuration> -->
+		  <!--   	  <imageName>httpfromtcp-teste</imageName> -->
+		  <!--   	  <mainClass>io.ddaaniel.Main</mainClass>  -->
+		  <!--   	  <buildArgs> -->
+		  <!--   		  <buildArg>-O4</buildArg> -->
+		  <!--   		  <buildArg>-no-fallback</buildArg> -->
+		  <!--   	  </buildArgs> -->
+		  <!--     </configuration> -->
+		  <!-- </plugin> -->
 	  </plugins>
   </build>
 </project>

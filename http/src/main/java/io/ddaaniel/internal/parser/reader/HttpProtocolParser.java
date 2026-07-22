@@ -33,7 +33,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			Parser currentState = this.state;
 			Parser nextState = currentState.parse(this.stream, buffer, builder);
 			this.state = nextState;
-			if (log.isLoggable(Level.FINER)) log.log(Level.FINER, "Parser transition: {0} -> {1}", new Object[]{currentState, nextState});
+			if (log.isLoggable(Level.FINER)) log.log(Level.FINER, " -> parser state transition: {0} -> {1}", new Object[]{currentState, nextState});
 			if (nextState == currentState || nextState == Parser._DONE || nextState == Parser._ERROR) {
 				break;
 			}
@@ -56,7 +56,7 @@ public class HttpProtocolParser implements HttpProtocol {
 	}
 
 	@Override
-	public void reset() {
+	public void restart() {
 		state = Parser._INIT;
 	}
 

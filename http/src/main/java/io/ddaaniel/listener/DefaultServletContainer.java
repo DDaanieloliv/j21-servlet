@@ -47,9 +47,10 @@ public class DefaultServletContainer implements ServletContainer {
 		this.attach(port, (message, writer) -> {
 			try {
 
-				String target = message.uri();
-				String method = message.method();
-				if (log.isLoggable(Level.FINE)) log.log(Level.INFO, " -> Routing Request: {0} {1}", new Object[]{ method, target });
+				if (log.isLoggable(Level.FINE)) {
+					log.log(Level.INFO, " -> dispatching request throuth the router [{0} {1}]", 
+							new Object[]{ message.method(), message.uri() });
+				}
 
 				router.dispatch(message).ifPresentOrElse(
 						(response) -> {
@@ -105,15 +106,18 @@ public class DefaultServletContainer implements ServletContainer {
 		try (conn) {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
+			var shoudKeepAlive = conn.isOpen();
 
-			while (conn.isOpen()) {
-
+			while (shoudKeepAlive) {
 				DefaultHttpServletRequest message;		
 				try {
-					message = reader.processMessage();
-					if (message == null) {
+
+					var optinalMessage = reader.readConnection();
+					if (optinalMessage.isEmpty()) {
 						break;
 					}
+					message = optinalMessage.get();
+
 				} catch (Throwable err) { 
 					if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Bad request payload received from client: ", err);
 					writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
@@ -121,9 +125,9 @@ public class DefaultServletContainer implements ServletContainer {
 				}
 
 				handler.get(message, writer);
-
 				if (log.isLoggable(Level.FINE)) log.info(" -> forwarding message to connection");
 			}
+
 		} catch (Throwable e) {
 			if (!closed.get()) { 
 				log.log(Level.SEVERE, " -> Error handling client connection lifecycle: ", e); 

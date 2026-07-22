@@ -3,6 +3,7 @@ package io.ddaaniel.internal.parser.reader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Optional;
 
 import io.ddaaniel.internal.exception.MalformedBodyException;
 import io.ddaaniel.internal.exception.URITooLongException;
@@ -44,7 +45,7 @@ public class ServletReader implements HttpReader {
 	}
 
 	@Override
-	public DefaultHttpServletRequest processMessage() {
+	public Optional<DefaultHttpServletRequest> readConnection() {
 		var builder = new HttpRequestBuilder();
 
 		try {
@@ -53,49 +54,56 @@ public class ServletReader implements HttpReader {
 
 				if (bytesRead == -1) {
 					if (http.isInit() && !buffer.hasUnparsedData()) {
-						return null;
+						return Optional.empty();
 					}
 					buffer.forceFlipForBody();
 					isEndOrThrow(new MalformedBodyException(" -> body shorter than reported content-length "));
-					return builder.build();
+					return Optional.of(builder.build());
 				}
 
 				if (bytesRead == 0 && !buffer.hasUnparsedData()) {
-					return null; 
+					return Optional.empty(); 
 				}
 
 				var buf = buffer.prepareForParsing();
 				http.parse(buf, builder);
 
 				if (http.isTerminated()) {
-					http.reset();
-					return builder.build();
+					http.restart();
+					return Optional.of(builder.build());
 				}
 
 				if (buffer.isStalled()) {
 					buffer.resetForNextRequest();
 					throw new URITooLongException(" -> uri too long, error 414 "); 
 				}
-				buffer.prepareForNextRead();
 			}
 		} catch (Throwable  exception) { 
              if (exception instanceof RuntimeException) throw (RuntimeException) exception;
 			 throw new RuntimeException(" -> Failure when parsing the servlet-request: ", exception); 
 		}
 
-		return builder.build();
+		return Optional.of(builder.build());
 	}
 
 
 	private static class NetworkBuffer {
 		private final ByteBuffer buf = ByteBuffer.allocate(1024);
+		private boolean parsingMode = false;
 
 		public int readFrom(ReadableByteChannel channel) throws IOException {
+			if (parsingMode) {
+				buf.compact();
+				parsingMode = false;
+            }
 			return channel.read(buf);
 		}
 
 		public ByteBuffer prepareForParsing() {
-			buf.flip();
+			if (!parsingMode) {
+				buf.flip();
+				parsingMode = true;
+			}
 			return buf;
 		}
 
@@ -104,19 +112,23 @@ public class ServletReader implements HttpReader {
 		}
 
 		public void forceFlipForBody() {
-			buf.flip();
+			if (!parsingMode) {
+				buf.flip();
+				parsingMode = true;
+			}
 		}
 
 		public boolean isStalled() {
-			return buf.remaining() == buf.capacity();
+			return parsingMode && buf.remaining() == buf.capacity();
 		}
 
 		public void resetForNextRequest() {
 			buf.compact();
+			parsingMode = false;
 		}
 
 		public boolean hasUnparsedData() {
-			return buf.position() > 0;
+			return parsingMode ? buf.hasRemaining() : buf.position() > 0;
 		}
 	}
 }

@@ -15,5 +15,5 @@ public interface HttpProtocol {
 
 	boolean isInit();
 
-	void reset();
+	void restart();
 }

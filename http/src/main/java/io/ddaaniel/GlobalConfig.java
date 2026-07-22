@@ -81,7 +81,7 @@ class DefaultLoggingFormatter extends Formatter {
 				record.getLevel(),
 				record.getLoggerName(),
 				record.getSourceMethodName(),
-				record.getMessage()
+				formatMessage(record)
 				);
 
 		if (record.getThrown() != null) {

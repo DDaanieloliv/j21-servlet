@@ -37,16 +37,11 @@ public class ServletWriter implements HttpServletWriter {
 	public void writeResponse(ResponseEntity<?> response) throws Exception {
 		for (HttpWriterConduct strategy : strategies) {
 			if (strategy.matches(response)) {
-				if (log.isLoggable(Level.FINE)) log.log(Level.FINE, "Selected writer strategy: {0} for response", strategy.getClass().getSimpleName());
+				if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> selected writer strategy: {0} for response", strategy.getClass().getSimpleName());
 				strategy.write(channel, response);
 
 				boolean keepAlive = !"close".equalsIgnoreCase(response.getHeaders().getFirst("Connection"));
-				if (keepAlive) {
-					// 1. Limpa o buffer de leitura do canal
-					// 2. Reseta a maquina de estados do seu parser HTTP para o estado INICIAL
-					// 3. Mantém a SelectionKey registrada para OP_READ aguardando os próximos bytes do wrk!
-					// connectionContext.resetForNextRequest();
-				} else {
+				if (!keepAlive) {
 					channel.close();
 				}
 				return;
