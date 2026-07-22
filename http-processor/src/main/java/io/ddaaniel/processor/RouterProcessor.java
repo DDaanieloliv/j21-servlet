@@ -83,9 +83,9 @@ public class RouterProcessor extends AbstractProcessor {
 
 							routeRegistrations.append((String.format(
 										"        routes.put(\"%s\", () -> {\n" +
-										"            try { return new %s().%s(); }\n" +
+										"            try { return %s.%s(); }\n" +
 										"            catch (Exception e) { throw new RuntimeException(e); }\n" +
-										"        });\n", routeKey, className, methodName
+										"        });\n", routeKey, varName, methodName
 										)));
 						}
 					}

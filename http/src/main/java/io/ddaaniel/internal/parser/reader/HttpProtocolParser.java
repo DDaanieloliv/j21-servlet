@@ -3,6 +3,8 @@ package io.ddaaniel.internal.parser.reader;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import io.ddaaniel.internal.exception.MalformedHeaderException;
 import io.ddaaniel.internal.exception.MalformedRequestLineException;
@@ -18,6 +20,8 @@ public class HttpProtocolParser implements HttpProtocol {
 
 	private ReadableByteChannel stream;
 
+	private static final Logger log = Logger.getLogger(HttpProtocolParser.class.getName());
+
 	public HttpProtocolParser(ReadableByteChannel conn) {
 		this.stream = conn;
 		this.state = Parser._INIT;
@@ -29,6 +33,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			Parser currentState = this.state;
 			Parser nextState = currentState.parse(this.stream, buffer, builder);
 			this.state = nextState;
+			if (log.isLoggable(Level.FINER)) log.log(Level.FINER, "Parser transition: {0} -> {1}", new Object[]{currentState, nextState});
 			if (nextState == currentState || nextState == Parser._DONE || nextState == Parser._ERROR) {
 				break;
 			}
@@ -43,6 +48,16 @@ public class HttpProtocolParser implements HttpProtocol {
 	@Override
 	public boolean isFailed() {
 		return this.state == Parser._ERROR;
+	}
+
+	@Override
+	public boolean isInit() {
+		return this.state == Parser._INIT;
+	}
+
+	@Override
+	public void reset() {
+		state = Parser._INIT;
 	}
 
 	enum Parser {

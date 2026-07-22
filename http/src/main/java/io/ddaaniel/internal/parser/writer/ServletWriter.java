@@ -3,6 +3,8 @@ package io.ddaaniel.internal.parser.writer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpStatus.HttpStatusCode;
@@ -14,6 +16,8 @@ import io.ddaaniel.internal.support.HttpFun.FunHttp;
 public class ServletWriter implements HttpServletWriter {
 
 	private final WritableByteChannel channel;
+
+	private static final Logger log = Logger.getLogger(ServletWriter.class.getName());
 
 	private static final List<HttpWriterConduct> strategies = List.of(
 		new ChunkedServletWriter(),
@@ -33,7 +37,18 @@ public class ServletWriter implements HttpServletWriter {
 	public void writeResponse(ResponseEntity<?> response) throws Exception {
 		for (HttpWriterConduct strategy : strategies) {
 			if (strategy.matches(response)) {
+				if (log.isLoggable(Level.FINE)) log.log(Level.FINE, "Selected writer strategy: {0} for response", strategy.getClass().getSimpleName());
 				strategy.write(channel, response);
+
+				boolean keepAlive = !"close".equalsIgnoreCase(response.getHeaders().getFirst("Connection"));
+				if (keepAlive) {
+					// 1. Limpa o buffer de leitura do canal
+					// 2. Reseta a maquina de estados do seu parser HTTP para o estado INICIAL
+					// 3. Mantém a SelectionKey registrada para OP_READ aguardando os próximos bytes do wrk!
+					// connectionContext.resetForNextRequest();
+				} else {
+					channel.close();
+				}
 				return;
 			}
 		}

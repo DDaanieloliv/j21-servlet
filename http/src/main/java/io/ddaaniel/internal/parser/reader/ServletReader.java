@@ -32,9 +32,9 @@ public class ServletReader implements HttpReader {
 		this.http = new HttpProtocolParser(stream);
 	}
 
-	private void assertEnd() {
+	private void isEndOrThrow(Throwable e) throws Throwable {
 		if(!http.isTerminated()) {
-			throw new MalformedBodyException(" -> body shorter than reported content-length ");
+			throw e;
 		}
 	}
 
@@ -49,28 +49,38 @@ public class ServletReader implements HttpReader {
 
 		try {
 			while (canRead()) {
-				if (buffer.readFrom(stream) == -1) {
+				int bytesRead = buffer.readFrom(stream);
+
+				if (bytesRead == -1) {
+					if (http.isInit() && !buffer.hasUnparsedData()) {
+						return null;
+					}
 					buffer.forceFlipForBody();
-					assertEnd();
+					isEndOrThrow(new MalformedBodyException(" -> body shorter than reported content-length "));
 					return builder.build();
+				}
+
+				if (bytesRead == 0 && !buffer.hasUnparsedData()) {
+					return null; 
 				}
 
 				var buf = buffer.prepareForParsing();
 				http.parse(buf, builder);
 
 				if (http.isTerminated()) {
+					http.reset();
 					return builder.build();
 				}
 
 				if (buffer.isStalled()) {
-					throw new URITooLongException(" -> uri too long, error 414 ");
+					buffer.resetForNextRequest();
+					throw new URITooLongException(" -> uri too long, error 414 "); 
 				}
 				buffer.prepareForNextRead();
-
 			}
-		} catch (Exception  exception) { 
-			if (exception instanceof RuntimeException) throw (RuntimeException) exception;
-			throw new RuntimeException(" -> Failure when parsing the servlet-request: ", exception);
+		} catch (Throwable  exception) { 
+             if (exception instanceof RuntimeException) throw (RuntimeException) exception;
+			 throw new RuntimeException(" -> Failure when parsing the servlet-request: ", exception); 
 		}
 
 		return builder.build();
@@ -99,6 +109,14 @@ public class ServletReader implements HttpReader {
 
 		public boolean isStalled() {
 			return buf.remaining() == buf.capacity();
+		}
+
+		public void resetForNextRequest() {
+			buf.compact();
+		}
+
+		public boolean hasUnparsedData() {
+			return buf.position() > 0;
 		}
 	}
 }

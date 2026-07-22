@@ -11,6 +11,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.SOURCE)
 public @interface HTTP {
-	String method();
-    String path();
+	String method() default "GET";
+    String path() default "/";
 }

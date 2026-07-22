@@ -7,6 +7,7 @@ import java.nio.channels.WritableByteChannel;
 
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
 
 
 public class DefaultServletWriter implements HttpWriterConduct {
@@ -32,7 +33,7 @@ public class DefaultServletWriter implements HttpWriterConduct {
 				}
 			}
 		} else {
-			byte[] rawBody = body != null ? body.toString().getBytes() : new byte[0];
+			byte[] rawBody = body != null && body instanceof byte[] ? (byte[]) body : new byte[0];
 			if (headers.get("Content-Length") == null) {
 				headers.set("Content-Length", String.valueOf(rawBody.length));
 			}
@@ -46,7 +47,8 @@ public class DefaultServletWriter implements HttpWriterConduct {
 	}
 
 	private void writeStatus(WritableByteChannel channel, ResponseEntity<?> res) throws Exception {
-		String statusStr = String.format("HTTP/1.1 %s\r\n", res.getStatusCode().toString());
+		var code = res.getStatusCode().value();
+		String statusStr = String.format("HTTP/1.1 %s %s\r\n", code, HttpStatus.resolve(code).getReasonPhrase());
 		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
 	}
 

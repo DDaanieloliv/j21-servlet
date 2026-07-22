@@ -31,7 +31,7 @@ public class Main {
 			keepAliveLatch.await();
 			log.info(" -> Server gracefully stopped");
 
-		} catch (Exception e) { 
+		} catch (Throwable e) { 
 			log.log(Level.SEVERE, " -> Error starting server: " + e.getMessage(), e); 
 			System.exit(1);	
 		}

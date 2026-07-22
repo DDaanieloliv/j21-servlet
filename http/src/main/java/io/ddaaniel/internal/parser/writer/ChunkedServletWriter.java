@@ -5,14 +5,19 @@ import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpStatus.HttpStatus;
 
 /**
  * ChunkedServletWriter
  */
 public class ChunkedServletWriter implements HttpWriterConduct {
+
+	private static final Logger log = Logger.getLogger(ChunkedServletWriter.class.getName());
 
 	@Override
 	public boolean matches(ResponseEntity<?> response) {
@@ -36,7 +41,8 @@ public class ChunkedServletWriter implements HttpWriterConduct {
 			headers.set("Content-Type", "application/octet-stream");
 		}
 
-		String statusStr = String.format("HTTP/1.1 %s\r\n", response.getStatusCode().toString());
+		var code = response.getStatusCode().value();
+		String statusStr = String.format("HTTP/1.1 %s %s\r\n", code, HttpStatus.resolve(code).getReasonPhrase());
 		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
 
 		var sb = new StringBuilder();
@@ -64,6 +70,7 @@ public class ChunkedServletWriter implements HttpWriterConduct {
 			channel.write(ByteBuffer.wrap("0\r\n".getBytes()));
 
 			var sha256Hex = HexFormat.of().formatHex(digest.digest());
+			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, "Chunked transfer complete. Total bytes: {0}, SHA-256: {1}", new Object[]{totalBytes, sha256Hex});
 			String trailersBlock = "X-Content-SHA256: " + sha256Hex + "\r\n" +
 				"X-Content-Length: " + totalBytes + "\r\n" +
 				"\r\n";

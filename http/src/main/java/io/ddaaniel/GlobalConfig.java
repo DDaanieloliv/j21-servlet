@@ -8,6 +8,7 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
@@ -26,7 +27,11 @@ public class GlobalConfig {
 				port = Integer.parseInt(PROPERTIES.getProperty("server.port", "42069"));
 			}
 
+			String levelPropertie = PROPERTIES.getProperty("log.level", "INFO");
+			Level configuredLevel = Level.parse(levelPropertie);
+
 			Logger rootLogger = Logger.getLogger("");
+			rootLogger.setLevel(configuredLevel);
 			for (Handler h : rootLogger.getHandlers()) {
 				rootLogger.removeHandler(h);
 			}
@@ -35,11 +40,13 @@ public class GlobalConfig {
 			Formatter formatter = new DefaultLoggingFormatter();
 			ConsoleHandler console = new ConsoleHandler();
 			console.setFormatter(formatter);
+			console.setLevel(configuredLevel);
 			rootLogger.addHandler(console);
 
 			String logFile = PROPERTIES.getProperty("log.file", "servlet.log");
 			FileHandler file = new FileHandler(logFile, true);
 			file.setFormatter(formatter);
+			file.setLevel(configuredLevel);
 			rootLogger.addHandler(file);
 
 		} catch (Exception e) {

@@ -12,5 +12,8 @@ public interface HttpProtocol {
 	boolean isTerminated();
 
 	boolean isFailed();
-	
+
+	boolean isInit();
+
+	void reset();
 }

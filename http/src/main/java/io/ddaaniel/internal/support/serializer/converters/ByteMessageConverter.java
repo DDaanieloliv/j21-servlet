@@ -14,4 +14,9 @@ public class ByteMessageConverter implements MessageSerializer {
         if (body == null) return new byte[0];
         return (byte[]) body;
     }
+
+	@Override
+	public String getContentType() {
+		return "application/octet-stream";
+	}
 }

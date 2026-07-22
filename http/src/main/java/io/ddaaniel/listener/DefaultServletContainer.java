@@ -36,37 +36,37 @@ public class DefaultServletContainer implements ServletContainer {
 		try {
 			this.listener = ServerSocketChannel.open();
 			this.executor = Executors.newVirtualThreadPerTaskExecutor();
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			throw new RuntimeException(" -> Error when create ServletContainer: ", e);
 		}
 	}
 
 	@Override
-	public DefaultServletContainer hookUp(int port) throws Exception {
+	public DefaultServletContainer hookUp(int port) throws Throwable {
 		var router = new Router();
 		this.attach(port, (message, writer) -> {
 			try {
 
 				String target = message.uri();
 				String method = message.method();
-				log.info(String.format(" -> Routing Request: %s %s", method, target));
+				if (log.isLoggable(Level.FINE)) log.log(Level.INFO, " -> Routing Request: {0} {1}", new Object[]{ method, target });
 
-				router.dispatch(method, target).ifPresentOrElse(
+				router.dispatch(message).ifPresentOrElse(
 						(response) -> {
 							try {
 								writer.writeResponse(response);
-							} catch (Exception e) {
-								log.log(Level.WARNING, " -> Error when writing response ", e);
+							} catch (Throwable e) {
+								if (log.isLoggable(Level.FINE)) log.log(Level.WARNING, " -> Error when writing response ", e);
 							}
 						},
 						() -> writer.writeErrorResponse(HttpStatus.NOT_FOUND));
 
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				log.log(Level.SEVERE, " -> Error when routing: " + e.getMessage(), e);
 				try {
 					writer.writeErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR);
-				} catch (Exception ignored) {
-					log.log(Level.SEVERE, " -> Error when writing error-response: " + e.getMessage(), e);
+				} catch (Throwable ignored) {
+					log.log(Level.SEVERE, " -> Error when writing error-response: ", e);
 				}
 			}
 			return;
@@ -75,11 +75,11 @@ public class DefaultServletContainer implements ServletContainer {
 	}
 
 	@Override
-	public DefaultServletContainer attach(int port, Handler handler) throws Exception {
+	public DefaultServletContainer attach(int port, Handler handler) throws Throwable {
 		this.closed.set(false);
 		this.handler = handler;
 		this.listener.bind(new InetSocketAddress(port));
-		log.info(" -> Server boundary socket bound successfully to port: " + port);
+		log.log(Level.INFO, " -> Server boundary socket bound successfully to port: ", port);
 		executor.submit(() -> { runServer(listener); });
 		return this;
 	}
@@ -94,7 +94,7 @@ public class DefaultServletContainer implements ServletContainer {
 				}
 				executor.submit(() -> { handleConnection(socketChannel); });
 			}
-		} catch (Exception e) { 
+		} catch (Throwable e) { 
 			if (!closed.get()) {
 				log.log(Level.SEVERE, " -> Fatal crash in main TCP accept loop! Server stopped accepting connections. ", e);
 			}
@@ -106,19 +106,27 @@ public class DefaultServletContainer implements ServletContainer {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
 
-			DefaultHttpServletRequest message;		
-			try {
-				message = reader.processMessage();
-			} catch (Exception err) { 
-				log.log(Level.FINE, " -> Bad request payload received from client: ", err);
-				writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
-				return;
+			while (conn.isOpen()) {
+
+				DefaultHttpServletRequest message;		
+				try {
+					message = reader.processMessage();
+					if (message == null) {
+						break;
+					}
+				} catch (Throwable err) { 
+					if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Bad request payload received from client: ", err);
+					writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
+					break;
+				}
+
+				handler.get(message, writer);
+
+				if (log.isLoggable(Level.FINE)) log.info(" -> forwarding message to connection");
 			}
-			handler.get(message, writer);
-			log.info(" -> forwarding message to connection");
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			if (!closed.get()) { 
-				log.log(Level.SEVERE, " -> Error handling client connection lifecycle: " + e.getMessage(), e); 
+				log.log(Level.SEVERE, " -> Error handling client connection lifecycle: ", e); 
 			}
 		}
 	}
@@ -130,7 +138,7 @@ public class DefaultServletContainer implements ServletContainer {
 			if (listener != null && listener.isOpen()) listener.close();
 			executor.shutdown();
 			log.info("ServletContainer shutdown executed cleanly.");
-		} catch (Exception e) { 
+		} catch (Throwable e) { 
 			log.log(Level.SEVERE, " -> Error when closing server: ", e);
 		}
 	}
