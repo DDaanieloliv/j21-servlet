@@ -3,6 +3,9 @@ package io.ddaaniel.listener;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +19,7 @@ import io.ddaaniel.core.Handler;
 import io.ddaaniel.core.filter.DefaultHttpFilterChain;
 import io.ddaaniel.core.filter.Filter;
 import io.ddaaniel.core.filter.FilterChain;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.reader.ServletReader;
@@ -129,7 +133,7 @@ public class DefaultServletContainer implements ServletContainer {
 					handleGlobalError(error, responseWrapper);
 				}
 
-				keepAlive = configureConnection(requestWrapper, responseWrapper);
+				keepAlive = handleConnection(requestWrapper, responseWrapper);
 
 				responseWrapper.flushToSocket();
 			}
@@ -141,20 +145,44 @@ public class DefaultServletContainer implements ServletContainer {
 		}
 	}
 
-	private boolean configureConnection(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
+	private void handleContent(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
+		byte[] bodyBytes = response.getBufferedBody();
+		HttpHeaders headers = response.getHeaders();
+
+		if (!headers.containsHeader("Date")) {
+			headers.set("Date", DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
+		}
+
+		if (!headers.containsHeader("Server")) {
+			headers.set("Server", "CustomJavaEngine/1.0");
+		}
+
+		if (!headers.containsHeader("Content-Length") && !headers.containsHeader("Transfer-Encoding")) {
+			headers.set("Content-Length", String.valueOf(bodyBytes.length));
+		}
+		
+		try {
+			response.flushToSocket();
+		} catch (Throwable e) {
+		}
+	}
+
+	private boolean handleConnection(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
 		String reqConnection = request.headers().getFirst("Connection");
 		String resConnection = response.getHeaders().getFirst("Connection");
 
 		boolean clientWantsClose = "close".equalsIgnoreCase(reqConnection);
-		boolean appWantsClose = "close".equalsIgnoreCase(resConnection) ;
+		boolean appWantsClose = "close".equalsIgnoreCase(resConnection);
+		boolean shouldClose = response.getStatus().isError();
 
-		if (clientWantsClose || appWantsClose) {
+		if (clientWantsClose || appWantsClose || shouldClose) {
 			response.setHeader("Connection", "close");
 			return false;
 		}
 
 		response.setHeader("Connection", "keep-alive");
 		response.setHeader("Keep-Alive", "timeout=5, max=1000");
+		handleContent(request, response);
 
 		return true;
 	}

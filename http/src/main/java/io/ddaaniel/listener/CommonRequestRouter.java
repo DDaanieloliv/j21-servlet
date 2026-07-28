@@ -43,7 +43,8 @@ public class CommonRequestRouter {
 		Supplier<Object> routeAction = compiledTable.get(routeKey);
 
 		if (routeAction == null) {
-			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> no route-action found to respective route-key: ", routeKey );
+			if (log.isLoggable(Level.FINE)) 
+				log.log(Level.FINE, " -> no route-action found to respective route-key: ", routeKey );
 			return Optional.empty();
 		}
 
@@ -58,16 +59,6 @@ public class CommonRequestRouter {
         }
 
         SerializedResult serialized = SERIALIZER.convert(rawResult, headers.getFirst("Content-Type"));
-
-		
-		if (headers.get("Connection") == null) {
-			
-			String connValue = message.headers().getFirst("Connection");
-			boolean shouldClose = "close".equalsIgnoreCase(connValue) || status.isError();
-			
-			headers.set("Connection", shouldClose ? "close" : "keep-alive");
-		}
-
         if (headers.get("Content-Type") == null) headers.set("Content-Type", serialized.contentType());
         headers.set("Content-Length", String.valueOf(serialized.data().length));
 
