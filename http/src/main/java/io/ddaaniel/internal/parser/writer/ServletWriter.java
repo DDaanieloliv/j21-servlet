@@ -7,6 +7,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.ddaaniel.core.httpEntity.ResponseEntity;
+import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
 
@@ -71,7 +72,8 @@ public class ServletWriter implements HttpServletWriter {
 					.getBytes();
 			}
 
-			String statusStr = String.format("HTTP/1.1 %s\r\n", status.toString());
+			var code = status.value();
+			String statusStr = String.format("HTTP/1.1 %s %s\r\n", code, HttpStatus.resolve(code).getReasonPhrase());
             String headersStr = "Content-Length: " + errorBody.length + "\r\n" +
                                 "Connection: close\r\n" +
                                 "Content-Type: text/html; charset=UTF-8\r\n\r\n";

@@ -199,6 +199,13 @@ public class HttpHeaders {
 	}
 
 	/**
+	 * Clear all headers from this HttpHeaders instance.
+	 */
+	public void clear() {
+		this.headers.clear();
+	}
+
+	/**
 	 * Set the given header value, or remove the header if {@code null}.
 	 * @param headerName the header name
 	 * @param headerValue the header value, or {@code null} for none

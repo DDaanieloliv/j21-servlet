@@ -13,19 +13,20 @@ import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.support.serializer.SerializationManager;
+import io.ddaaniel.internal.support.serializer.SerializationManager.SerializedResult;
 
 
 
-public class Router {
+public class CommonRequestRouter {
 
 	private static final SerializationManager SERIALIZER = new SerializationManager();
 
     private final Map<String, Supplier<Object>> compiledTable;
 
-	private static final Logger log = Logger.getLogger(Router.class.getName());
+	private static final Logger log = Logger.getLogger(CommonRequestRouter.class.getName());
 
     @SuppressWarnings("unchecked")
-    public Router() {
+    public CommonRequestRouter() {
 		/// this.compiledTable = io.ddaaniel.generated.RouteTable.table();
         try {
             Class<?> table = Class.forName("io.ddaaniel.generated.RouteTable");
@@ -37,10 +38,6 @@ public class Router {
     }
 
 	public Optional<ResponseEntity<?>>dispatch(DefaultHttpServletRequest message) throws Exception {
-		if (message.method() == null || message.uri() == null || message.method().isEmpty() || message.uri().isEmpty()) {
-			if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Error to obtain the routing arguments ");
-			return Optional.empty();
-		}
 
 		String routeKey = message.method().toUpperCase() + " " + message.uri();
 		Supplier<Object> routeAction = compiledTable.get(routeKey);
@@ -51,45 +48,29 @@ public class Router {
 		}
 
 		Object rawResult = routeAction.get();
-
-		Object body = rawResult;
         HttpHeaders headers = new HttpHeaders();
         HttpStatusCode status = HttpStatus.OK;
 
         if (rawResult instanceof ResponseEntity<?> rEntity) {
-            body = rEntity.getBody();
-            if (rEntity.getHeaders() != null) {
-                headers = rEntity.getHeaders();
-            }
-            if (rEntity.getStatusCode() != null) {
-                status = rEntity.getStatusCode();
-            }
+            rawResult = rEntity.getBody();
+            if (rEntity.getHeaders() != null) headers = rEntity.getHeaders();
+            if (rEntity.getStatusCode() != null) status = rEntity.getStatusCode();
         }
 
-		String existingContentType = headers.getFirst("Content-Type");
+        SerializedResult serialized = SERIALIZER.convert(rawResult, headers.getFirst("Content-Type"));
 
-        var serialized = SERIALIZER.convert(body, existingContentType);
-
-        ensureConnectionHeader(message, headers);
-        
-        if (headers.get("Content-Type") == null) {
-            headers.set("Content-Type", serialized.contentType());
-        }
-
-        headers.set("Content-Length", String.valueOf(serialized.data().length));
-
-        if (log.isLoggable(Level.FINE)) {
-            log.log(Level.INFO, " -> routing successfully completed for route-key: [{0}] ", routeKey);
-        }
-
-        return Optional.of(new ResponseEntity<>(serialized.data(), headers, status));
-	}
-
-
-	private void ensureConnectionHeader(DefaultHttpServletRequest message, HttpHeaders headers) {
+		
 		if (headers.get("Connection") == null) {
-			boolean shouldClose = "close".equalsIgnoreCase(message.headers().getFirst("Connection"));
+			
+			String connValue = message.headers().getFirst("Connection");
+			boolean shouldClose = "close".equalsIgnoreCase(connValue) || status.isError();
+			
 			headers.set("Connection", shouldClose ? "close" : "keep-alive");
 		}
+
+        if (headers.get("Content-Type") == null) headers.set("Content-Type", serialized.contentType());
+        headers.set("Content-Length", String.valueOf(serialized.data().length));
+
+        return Optional.of(new ResponseEntity<>(serialized.data(), headers, status));
 	}
 }

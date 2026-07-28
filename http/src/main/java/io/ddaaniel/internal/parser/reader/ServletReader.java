@@ -107,10 +107,6 @@ public class ServletReader implements HttpReader {
 			return buf;
 		}
 
-		public void prepareForNextRead() {
-			buf.compact();
-		}
-
 		public void forceFlipForBody() {
 			if (!parsingMode) {
 				buf.flip();

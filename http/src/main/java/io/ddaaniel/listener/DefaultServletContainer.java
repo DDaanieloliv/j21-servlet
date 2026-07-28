@@ -3,6 +3,9 @@ package io.ddaaniel.listener;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -10,9 +13,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.ddaaniel.core.Handler;
+import io.ddaaniel.core.filter.DefaultHttpFilterChain;
+import io.ddaaniel.core.filter.Filter;
+import io.ddaaniel.core.filter.FilterChain;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
 import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.internal.parser.writer.DefaultHttpServletResponse;
 import io.ddaaniel.internal.parser.writer.ServletWriter;
 
 
@@ -32,6 +39,10 @@ public class DefaultServletContainer implements ServletContainer {
 
 	private static final Logger log = Logger.getLogger(DefaultServletContainer.class.getName());
 
+	private final List<Filter> filterChain = new ArrayList<>();
+
+
+
 	public DefaultServletContainer() {
 		try {
 			this.listener = ServerSocketChannel.open();
@@ -41,38 +52,29 @@ public class DefaultServletContainer implements ServletContainer {
 		}
 	}
 
+	public DefaultServletContainer addFilter(Filter filter) {
+		this.filterChain.add(filter);
+		return this;
+	}
+
+
 	@Override
 	public DefaultServletContainer hookUp(int port) throws Throwable {
-		var router = new Router();
-		this.attach(port, (message, writer) -> {
-			try {
-
-				if (log.isLoggable(Level.FINE)) {
-					log.log(Level.INFO, " -> dispatching request throuth the router [{0} {1}]", 
-							new Object[]{ message.method(), message.uri() });
-				}
-
-				router.dispatch(message).ifPresentOrElse(
-						(response) -> {
-							try {
-								writer.writeResponse(response);
-							} catch (Throwable e) {
-								if (log.isLoggable(Level.FINE)) log.log(Level.WARNING, " -> Error when writing response ", e);
-							}
-						},
-						() -> writer.writeErrorResponse(HttpStatus.NOT_FOUND));
-
-			} catch (Throwable e) {
-				log.log(Level.SEVERE, " -> Error when routing: " + e.getMessage(), e);
-				try {
-					writer.writeErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR);
-				} catch (Throwable ignored) {
-					log.log(Level.SEVERE, " -> Error when writing error-response: ", e);
-				}
+		var router = new CommonRequestRouter();
+		return this.attach(port, (req, res) -> {
+			if (log.isLoggable(Level.FINE)) {
+				log.log(Level.FINE, " -> Dispatching request [{0} {1}]", 
+						new Object[]{ req.method(), req.uri() });
 			}
-			return;
+
+			var responseEntity = router.dispatch(req);
+
+			if (responseEntity.isPresent()) {
+				res.writeResponse(responseEntity.get());
+			} else {
+				res.sendError(HttpStatus.NOT_FOUND, "Route not found");
+			}
 		});
-		return this;
 	}
 
 	@Override
@@ -106,32 +108,63 @@ public class DefaultServletContainer implements ServletContainer {
 		try (conn) {
 			var reader = new ServletReader(conn);
 			var writer = new ServletWriter(conn);
-			var shoudKeepAlive = conn.isOpen();
 
-			while (shoudKeepAlive) {
-				DefaultHttpServletRequest message;		
+			boolean keepAlive = true;
+
+			while (keepAlive && conn.isOpen() && !closed.get()) {
+
+				Optional<DefaultHttpServletRequest> requestOpt = reader.readConnection();
+				if (requestOpt.isEmpty()) break;
+
+				DefaultHttpServletRequest requestWrapper = requestOpt.get();
+				DefaultHttpServletResponse responseWrapper = new DefaultHttpServletResponse(writer);
+
 				try {
+					FilterChain chain = new DefaultHttpFilterChain(this.filterChain, (req, res) -> {
+						handler.get(req, res);
+					});
+					chain.doFilter(requestWrapper, responseWrapper);
 
-					var optinalMessage = reader.readConnection();
-					if (optinalMessage.isEmpty()) {
-						break;
-					}
-					message = optinalMessage.get();
-
-				} catch (Throwable err) { 
-					if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> Bad request payload received from client: ", err);
-					writer.writeErrorResponse(HttpStatus.BAD_REQUEST);
-					break;
+				} catch (Throwable error) {
+					handleGlobalError(error, responseWrapper);
 				}
 
-				handler.get(message, writer);
-				if (log.isLoggable(Level.FINE)) log.info(" -> forwarding message to connection");
+				keepAlive = configureConnection(requestWrapper, responseWrapper);
+
+				responseWrapper.flushToSocket();
 			}
 
 		} catch (Throwable e) {
-			if (!closed.get()) { 
-				log.log(Level.SEVERE, " -> Error handling client connection lifecycle: ", e); 
+			if (!closed.get()) {
+				log.log(Level.FINE, " -> Connection closed or network reset: " + e.getMessage());
 			}
+		}
+	}
+
+	private boolean configureConnection(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
+		String reqConnection = request.headers().getFirst("Connection");
+		String resConnection = response.getHeaders().getFirst("Connection");
+
+		boolean clientWantsClose = "close".equalsIgnoreCase(reqConnection);
+		boolean appWantsClose = "close".equalsIgnoreCase(resConnection) ;
+
+		if (clientWantsClose || appWantsClose) {
+			response.setHeader("Connection", "close");
+			return false;
+		}
+
+		response.setHeader("Connection", "keep-alive");
+		response.setHeader("Keep-Alive", "timeout=5, max=1000");
+
+		return true;
+	}
+
+	private void handleGlobalError(Throwable error, DefaultHttpServletResponse response) {
+		log.log(Level.SEVERE, " -> Unhandled exception during HTTP request processing: ", error);
+		try {
+			response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error: " + error.getMessage());
+		} catch (Throwable fatal) {
+			log.log(Level.SEVERE, " -> Fatal: Failed to format 500 error response", fatal);
 		}
 	}
 
