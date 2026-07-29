@@ -5,21 +5,21 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
-import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 
 
 public class DefaultServletWriter implements HttpWriterConduct {
 
+
 	@Override
-	public boolean matches(ResponseEntity<?> response) {
+	public boolean matches(DefaultHttpServletResponse response) {
 		return true;
 	}
 
 	@Override
-	public void write(WritableByteChannel channel, ResponseEntity<?> response) throws Exception {
-		Object body = response.getBody();
+	public void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Throwable {
+		Object body = response.getBufferedBody();
 		HttpHeaders headers = response.getHeaders() != null ? response.getHeaders() : new HttpHeaders();
 		 
 		if (body instanceof InputStream bodyStream) {
@@ -34,20 +34,15 @@ public class DefaultServletWriter implements HttpWriterConduct {
 			}
 		} else {
 			byte[] rawBody = body != null && body instanceof byte[] ? (byte[]) body : new byte[0];
-			if (headers.get("Content-Length") == null) {
-				headers.set("Content-Length", String.valueOf(rawBody.length));
-			}
-			if (headers.get("Content-Type") == null) {
-				headers.set("Content-Type", "text/plain");
-			}
+			response.prepFlushToSocket();
 			writeStatus(channel, response);
 			writeHeaders(channel, headers);
 			channel.write(ByteBuffer.wrap(rawBody));
 		}
 	}
 
-	private void writeStatus(WritableByteChannel channel, ResponseEntity<?> res) throws Exception {
-		var code = res.getStatusCode().value();
+	private void writeStatus(WritableByteChannel channel, DefaultHttpServletResponse res) throws Exception {
+		var code = res.getStatus().value();
 		String statusStr = String.format("HTTP/1.1 %s %s\r\n", code, HttpStatus.resolve(code).getReasonPhrase());
 		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
 	}

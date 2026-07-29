@@ -3,9 +3,6 @@ package io.ddaaniel.listener;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -35,21 +32,20 @@ public class DefaultServletContainer implements ServletContainer {
 
 	private Handler handler;
 
+	private ServerSocketChannel listener;
+
 	private final ExecutorService executor;
 
-	private final ServerSocketChannel listener;
+	private final List<Filter> filterChain = new ArrayList<>();
 
 	private final AtomicBoolean closed = new AtomicBoolean(false);
 
 	private static final Logger log = Logger.getLogger(DefaultServletContainer.class.getName());
 
-	private final List<Filter> filterChain = new ArrayList<>();
-
 
 
 	public DefaultServletContainer() {
 		try {
-			this.listener = ServerSocketChannel.open();
 			this.executor = Executors.newVirtualThreadPerTaskExecutor();
 		} catch (Throwable e) {
 			throw new RuntimeException(" -> Error when create ServletContainer: ", e);
@@ -74,7 +70,8 @@ public class DefaultServletContainer implements ServletContainer {
 			var responseEntity = router.dispatch(req);
 
 			if (responseEntity.isPresent()) {
-				res.writeResponse(responseEntity.get());
+				var r = responseEntity.get();
+				res.setResponse(r.getBody(), r.getHeaders(), r.getStatusCode());
 			} else {
 				res.sendError(HttpStatus.NOT_FOUND, "Route not found");
 			}
@@ -85,11 +82,29 @@ public class DefaultServletContainer implements ServletContainer {
 	public DefaultServletContainer attach(int port, Handler handler) throws Throwable {
 		this.closed.set(false);
 		this.handler = handler;
+
+		this.listener = ServerSocketChannel.open();
 		this.listener.bind(new InetSocketAddress(port));
+
 		log.log(Level.INFO, " -> Server boundary socket bound successfully to port: ", port);
-		executor.submit(() -> { runServer(listener); });
+
+		executor.execute(() -> { runServer(listener); });
 		return this;
 	}
+
+	@Override
+	public void close() {
+		try {
+			closed.set(true);
+			if (listener != null && listener.isOpen()) listener.close();
+			executor.shutdown();
+			log.info("ServletContainer shutdown executed cleanly.");
+		} catch (Throwable e) { 
+			log.log(Level.SEVERE, " -> Error when closing server: ", e);
+		}
+	}
+
+
 
 	public void runServer(ServerSocketChannel listener) {
 		try {
@@ -99,7 +114,7 @@ public class DefaultServletContainer implements ServletContainer {
 					if (socketChannel != null) socketChannel.close();
 					return;
 				}
-				executor.submit(() -> { handleConnection(socketChannel); });
+				executor.execute(() -> { handleConnection(socketChannel); });
 			}
 		} catch (Throwable e) { 
 			if (!closed.get()) {
@@ -117,25 +132,23 @@ public class DefaultServletContainer implements ServletContainer {
 
 			while (keepAlive && conn.isOpen() && !closed.get()) {
 
-				Optional<DefaultHttpServletRequest> requestOpt = reader.readConnection();
-				if (requestOpt.isEmpty()) break;
+				Optional<DefaultHttpServletRequest> optionalServletRequest = reader.readConnection();
+				if (optionalServletRequest.isEmpty()) break;
 
-				DefaultHttpServletRequest requestWrapper = requestOpt.get();
-				DefaultHttpServletResponse responseWrapper = new DefaultHttpServletResponse(writer);
+				DefaultHttpServletRequest requestWrapper = optionalServletRequest.get();
+				DefaultHttpServletResponse responseWrapper = new DefaultHttpServletResponse();
 
 				try {
 					FilterChain chain = new DefaultHttpFilterChain(this.filterChain, (req, res) -> {
 						handler.get(req, res);
 					});
 					chain.doFilter(requestWrapper, responseWrapper);
-
 				} catch (Throwable error) {
 					handleGlobalError(error, responseWrapper);
 				}
 
-				keepAlive = handleConnection(requestWrapper, responseWrapper);
-
-				responseWrapper.flushToSocket();
+				keepAlive = shouldKeepAlive(requestWrapper, responseWrapper);
+				writer.writeResponse(responseWrapper);
 			}
 
 		} catch (Throwable e) {
@@ -145,47 +158,26 @@ public class DefaultServletContainer implements ServletContainer {
 		}
 	}
 
-	private void handleContent(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
-		byte[] bodyBytes = response.getBufferedBody();
-		HttpHeaders headers = response.getHeaders();
 
-		if (!headers.containsHeader("Date")) {
-			headers.set("Date", DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
-		}
-
-		if (!headers.containsHeader("Server")) {
-			headers.set("Server", "CustomJavaEngine/1.0");
-		}
-
-		if (!headers.containsHeader("Content-Length") && !headers.containsHeader("Transfer-Encoding")) {
-			headers.set("Content-Length", String.valueOf(bodyBytes.length));
-		}
-		
-		try {
-			response.flushToSocket();
-		} catch (Throwable e) {
-		}
-	}
-
-	private boolean handleConnection(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
-		String reqConnection = request.headers().getFirst("Connection");
-		String resConnection = response.getHeaders().getFirst("Connection");
+	private boolean shouldKeepAlive(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
+		String reqConnection = request.headers().getFirst(HttpHeaders.CONNECTION);
+		String resConnection = response.getHeaders().getFirst(HttpHeaders.CONNECTION);
 
 		boolean clientWantsClose = "close".equalsIgnoreCase(reqConnection);
 		boolean appWantsClose = "close".equalsIgnoreCase(resConnection);
 		boolean shouldClose = response.getStatus().isError();
 
 		if (clientWantsClose || appWantsClose || shouldClose) {
-			response.setHeader("Connection", "close");
+			response.setHeader(HttpHeaders.CONNECTION, "close");
 			return false;
 		}
 
-		response.setHeader("Connection", "keep-alive");
+		response.setHeader(HttpHeaders.CONNECTION, "keep-alive");
 		response.setHeader("Keep-Alive", "timeout=5, max=1000");
-		handleContent(request, response);
 
 		return true;
 	}
+
 
 	private void handleGlobalError(Throwable error, DefaultHttpServletResponse response) {
 		log.log(Level.SEVERE, " -> Unhandled exception during HTTP request processing: ", error);
@@ -193,18 +185,6 @@ public class DefaultServletContainer implements ServletContainer {
 			response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error: " + error.getMessage());
 		} catch (Throwable fatal) {
 			log.log(Level.SEVERE, " -> Fatal: Failed to format 500 error response", fatal);
-		}
-	}
-
-	@Override
-	public void close() {
-		try {
-			closed.set(true);
-			if (listener != null && listener.isOpen()) listener.close();
-			executor.shutdown();
-			log.info("ServletContainer shutdown executed cleanly.");
-		} catch (Throwable e) { 
-			log.log(Level.SEVERE, " -> Error when closing server: ", e);
 		}
 	}
 }

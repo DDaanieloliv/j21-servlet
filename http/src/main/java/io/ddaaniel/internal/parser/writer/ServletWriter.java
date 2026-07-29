@@ -2,11 +2,14 @@ package io.ddaaniel.internal.parser.writer;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import io.ddaaniel.core.httpEntity.ResponseEntity;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.internal.support.HttpFun.FunHttp;
@@ -35,10 +38,11 @@ public class ServletWriter implements HttpServletWriter {
 	}
 
 	@Override
-	public void writeResponse(ResponseEntity<?> response) throws Exception {
+	public void writeResponse(DefaultHttpServletResponse response) throws Throwable {
 		for (HttpWriterConduct strategy : strategies) {
 			if (strategy.matches(response)) {
 				if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> selected writer strategy: {0} for response", strategy.getClass().getSimpleName());
+				setSoftwareOrigin(response);
 				strategy.write(channel, response);
 
 				boolean keepAlive = !"close".equalsIgnoreCase(response.getHeaders().getFirst("Connection"));
@@ -84,5 +88,16 @@ public class ServletWriter implements HttpServletWriter {
         } catch (Exception e) {
             throw new RuntimeException(" -> Critical Error when send error response ", e);
         }
+	}
+
+
+	protected void setSoftwareOrigin(DefaultHttpServletResponse response) {
+		var headers = response.getHeaders();
+		if (!headers.containsHeader(HttpHeaders.DATE)) {
+			headers.set(HttpHeaders.DATE, DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
+		}
+		if (!headers.containsHeader(HttpHeaders.SERVER)) {
+			headers.set(HttpHeaders.SERVER, "CustomJavaEngine/1.0");
+		}
 	}
 }

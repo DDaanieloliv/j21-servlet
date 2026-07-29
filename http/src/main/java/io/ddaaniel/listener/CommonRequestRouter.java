@@ -58,9 +58,11 @@ public class CommonRequestRouter {
             if (rEntity.getStatusCode() != null) status = rEntity.getStatusCode();
         }
 
-        SerializedResult serialized = SERIALIZER.convert(rawResult, headers.getFirst("Content-Type"));
-        if (headers.get("Content-Type") == null) headers.set("Content-Type", serialized.contentType());
-        headers.set("Content-Length", String.valueOf(serialized.data().length));
+        SerializedResult serialized = SERIALIZER.convert(rawResult, headers.getFirst(HttpHeaders.CONTENT_TYPE));
+        if (headers.get(HttpHeaders.CONTENT_TYPE) == null) {
+			headers.set(HttpHeaders.CONTENT_TYPE, serialized.contentType());
+		}
+        headers.set(HttpHeaders.CONTENT_LENGTH, String.valueOf(serialized.data().length));
 
         return Optional.of(new ResponseEntity<>(serialized.data(), headers, status));
 	}

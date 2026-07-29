@@ -1,5 +1,6 @@
 package io.ddaaniel.internal.parser.writer;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
@@ -8,7 +9,6 @@ import java.util.HexFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 
@@ -20,8 +20,8 @@ public class ChunkedServletWriter implements HttpWriterConduct {
 	private static final Logger log = Logger.getLogger(ChunkedServletWriter.class.getName());
 
 	@Override
-	public boolean matches(ResponseEntity<?> response) {
-		Object body = response.getBody();
+	public boolean matches(DefaultHttpServletResponse response) {
+		Object body = response.getBufferedBody();
 		HttpHeaders headers = response.getHeaders();
 		boolean isStream = body instanceof InputStream;
 		boolean hasLength = headers != null && headers.get("Content-Length") != null;
@@ -30,18 +30,18 @@ public class ChunkedServletWriter implements HttpWriterConduct {
 	}
 
 	@Override
-	public void write(WritableByteChannel channel, ResponseEntity<?> response) throws Exception {
-		InputStream bodyStream = (InputStream) response.getBody();
+	public void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Exception {
+		InputStream bodyStream = new ByteArrayInputStream(response.getBufferedBody());
 		HttpHeaders headers = response.getHeaders() != null ? response.getHeaders() : new HttpHeaders();
 
-		headers.remove("Content-Length");
-		headers.set("Transfer-Encoding", "chunked");
-		headers.set("Trailer", "X-Content-SHA256, X-Content-Length");
-		if (headers.get("Content-Type") == null) {
-			headers.set("Content-Type", "application/octet-stream");
+		headers.remove(HttpHeaders.CONTENT_LENGTH);
+		headers.set(HttpHeaders.TRANSFER_ENCODING, "chunked");
+		headers.set(HttpHeaders.TRAILER, "X-Content-SHA256, X-Content-Length");
+		if (headers.get(HttpHeaders.CONTENT_TYPE) == null) {
+			headers.set(HttpHeaders.CONTENT_TYPE, "application/octet-stream");
 		}
 
-		var code = response.getStatusCode().value();
+		var code = response.getStatus().value();
 		String statusStr = String.format("HTTP/1.1 %s %s\r\n", code, HttpStatus.resolve(code).getReasonPhrase());
 		channel.write(ByteBuffer.wrap(statusStr.getBytes()));
 

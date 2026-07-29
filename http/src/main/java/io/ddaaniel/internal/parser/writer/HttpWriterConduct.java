@@ -2,14 +2,13 @@ package io.ddaaniel.internal.parser.writer;
 
 import java.nio.channels.WritableByteChannel;
 
-import io.ddaaniel.core.httpEntity.ResponseEntity;
 
 /**
  * HttpWriterConduct
  */
 public interface HttpWriterConduct {
 
-	boolean matches(ResponseEntity<?> response);
+	boolean matches(DefaultHttpServletResponse response);
 
-	void write(WritableByteChannel channel, ResponseEntity<?> response) throws Exception;
+	void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Throwable;
 }
