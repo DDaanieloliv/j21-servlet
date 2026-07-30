@@ -1,8 +1,8 @@
 package io.ddaaniel.core.filter;
 
 import java.util.List;
-import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
-import io.ddaaniel.internal.parser.writer.DefaultHttpServletResponse;
+import io.ddaaniel.listener.internal.parser.reader.DefaultHttpServletRequest;
+import io.ddaaniel.listener.internal.parser.writer.DefaultHttpServletResponse;
 
 public class DefaultHttpFilterChain implements FilterChain {
 

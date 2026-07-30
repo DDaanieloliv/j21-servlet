@@ -2,9 +2,9 @@ package io.ddaaniel.reader;
 
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.internal.exception.MalformedBodyException;
-import io.ddaaniel.internal.exception.MalformedHeaderException;
-import io.ddaaniel.internal.parser.reader.ServletReader;
+import io.ddaaniel.listener.internal.exception.MalformedBodyException;
+import io.ddaaniel.listener.internal.exception.MalformedHeaderException;
+import io.ddaaniel.listener.internal.parser.reader.ServletReader;
 import io.ddaaniel.reader.mocks.ChunkReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

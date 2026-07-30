@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.internal.support.collectionUtil.CollectionUtil;
+import io.ddaaniel.listener.internal.support.collectionUtil.CollectionUtil;
 
 
 /**

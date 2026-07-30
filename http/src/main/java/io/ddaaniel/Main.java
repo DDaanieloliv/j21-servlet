@@ -13,13 +13,12 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		GlobalConfig.initialize();
-
-		var port = GlobalConfig.getPort();
+		LogConfig.initialize();
+		var port = LogConfig.getPort();
 		var keepAliveLatch = new CountDownLatch(1);
 
 		try {
-			ServletContainer s = new DefaultServletContainer().hookUp(port);
+			ServletContainer s = new DefaultServletContainer().loadContainer(port);
 			log.info(" -> Server started on port " + port);
 
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {

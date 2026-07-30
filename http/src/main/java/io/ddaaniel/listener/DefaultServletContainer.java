@@ -16,12 +16,14 @@ import io.ddaaniel.core.Handler;
 import io.ddaaniel.core.filter.DefaultHttpFilterChain;
 import io.ddaaniel.core.filter.Filter;
 import io.ddaaniel.core.filter.FilterChain;
+import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
-import io.ddaaniel.internal.parser.reader.DefaultHttpServletRequest;
-import io.ddaaniel.internal.parser.reader.ServletReader;
-import io.ddaaniel.internal.parser.writer.DefaultHttpServletResponse;
-import io.ddaaniel.internal.parser.writer.ServletWriter;
+import io.ddaaniel.listener.internal.parser.reader.DefaultHttpServletRequest;
+import io.ddaaniel.listener.internal.parser.reader.ServletReader;
+import io.ddaaniel.listener.internal.parser.writer.DefaultHttpServletResponse;
+import io.ddaaniel.listener.internal.parser.writer.ServletWriter;
+import io.ddaaniel.routing.CommonRequestRouter;
 
 
 
@@ -59,9 +61,9 @@ public class DefaultServletContainer implements ServletContainer {
 
 
 	@Override
-	public DefaultServletContainer hookUp(int port) throws Throwable {
+	public DefaultServletContainer loadContainer(int port) throws Throwable {
 		var router = new CommonRequestRouter();
-		return this.attach(port, (req, res) -> {
+		return this.loadServletContainer(port, (req, res) -> {
 			if (log.isLoggable(Level.FINE)) {
 				log.log(Level.FINE, " -> Dispatching request [{0} {1}]", 
 						new Object[]{ req.method(), req.uri() });
@@ -70,26 +72,12 @@ public class DefaultServletContainer implements ServletContainer {
 			var responseEntity = router.dispatch(req);
 
 			if (responseEntity.isPresent()) {
-				var r = responseEntity.get();
+				ResponseEntity<?> r = responseEntity.get();
 				res.setResponse(r.getBody(), r.getHeaders(), r.getStatusCode());
 			} else {
 				res.sendError(HttpStatus.NOT_FOUND, "Route not found");
 			}
 		});
-	}
-
-	@Override
-	public DefaultServletContainer attach(int port, Handler handler) throws Throwable {
-		this.closed.set(false);
-		this.handler = handler;
-
-		this.listener = ServerSocketChannel.open();
-		this.listener.bind(new InetSocketAddress(port));
-
-		log.log(Level.INFO, " -> Server boundary socket bound successfully to port: ", port);
-
-		executor.execute(() -> { runServer(listener); });
-		return this;
 	}
 
 	@Override
@@ -104,6 +92,19 @@ public class DefaultServletContainer implements ServletContainer {
 		}
 	}
 
+
+	public DefaultServletContainer loadServletContainer(int port, Handler handler) throws Throwable {
+		this.closed.set(false);
+		this.handler = handler;
+
+		this.listener = ServerSocketChannel.open();
+		this.listener.bind(new InetSocketAddress(port));
+
+		log.log(Level.INFO, " -> Server boundary socket bound successfully to port: ", port);
+
+		executor.execute(() -> { runServer(listener); });
+		return this;
+	}
 
 
 	public void runServer(ServerSocketChannel listener) {
