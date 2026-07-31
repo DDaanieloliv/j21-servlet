@@ -49,7 +49,7 @@ public class DefaultServletContainer implements ServletContainer {
 	public DefaultServletContainer() {
 		try {
 			this.executor = Executors.newVirtualThreadPerTaskExecutor();
-		} catch (Throwable e) {
+		} catch (Exception e) {
 			throw new RuntimeException(" -> Error when create ServletContainer: ", e);
 		}
 	}
@@ -61,7 +61,7 @@ public class DefaultServletContainer implements ServletContainer {
 
 
 	@Override
-	public DefaultServletContainer loadContainer(int port) throws Throwable {
+	public DefaultServletContainer loadContainer(int port) throws Exception {
 		var router = new CommonRequestRouter();
 		return this.loadServletContainer(port, (req, res) -> {
 			if (log.isLoggable(Level.FINE)) {
@@ -93,7 +93,7 @@ public class DefaultServletContainer implements ServletContainer {
 	}
 
 
-	public DefaultServletContainer loadServletContainer(int port, Handler handler) throws Throwable {
+	public DefaultServletContainer loadServletContainer(int port, Handler handler) throws Exception {
 		this.closed.set(false);
 		this.handler = handler;
 
@@ -117,7 +117,7 @@ public class DefaultServletContainer implements ServletContainer {
 				}
 				executor.execute(() -> { handleConnection(socketChannel); });
 			}
-		} catch (Throwable e) { 
+		} catch (Exception e) { 
 			if (!closed.get()) {
 				log.log(Level.SEVERE, " -> Fatal crash in main TCP accept loop! Server stopped accepting connections. ", e);
 			}
@@ -144,7 +144,7 @@ public class DefaultServletContainer implements ServletContainer {
 						handler.get(req, res);
 					});
 					chain.doFilter(requestWrapper, responseWrapper);
-				} catch (Throwable error) {
+				} catch (Exception error) {
 					handleGlobalError(error, responseWrapper);
 				}
 
@@ -152,7 +152,7 @@ public class DefaultServletContainer implements ServletContainer {
 				writer.writeResponse(responseWrapper);
 			}
 
-		} catch (Throwable e) {
+		} catch (Exception e) {
 			if (!closed.get()) {
 				log.log(Level.FINE, " -> Connection closed or network reset: " + e.getMessage());
 			}
@@ -174,7 +174,7 @@ public class DefaultServletContainer implements ServletContainer {
 		}
 
 		response.setHeader(HttpHeaders.CONNECTION, "keep-alive");
-		response.setHeader("Keep-Alive", "timeout=5, max=1000");
+		response.setHeader("keep-Alive", "timeout=5, max=1000");
 
 		return true;
 	}

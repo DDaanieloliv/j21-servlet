@@ -38,7 +38,7 @@ public class ServletWriter implements HttpServletWriter {
 	}
 
 	@Override
-	public void writeResponse(DefaultHttpServletResponse response) throws Throwable {
+	public void writeResponse(DefaultHttpServletResponse response) throws Exception {
 		for (HttpWriterConduct strategy : strategies) {
 			if (strategy.matches(response)) {
 				if (log.isLoggable(Level.FINE)) log.log(Level.FINE, " -> selected writer strategy: {0} for response", strategy.getClass().getSimpleName());

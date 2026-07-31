@@ -12,7 +12,7 @@ public interface HttpServletWriter {
 
 	WritableByteChannel channel();
 	
-	void writeResponse(DefaultHttpServletResponse response) throws Throwable;
+	void writeResponse(DefaultHttpServletResponse response) throws Exception;
 
 	void writeErrorResponse(HttpStatusCode statusCode);
 }

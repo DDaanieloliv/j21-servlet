@@ -76,7 +76,7 @@ public class DefaultHttpServletResponse {
         this.bodyBuffer.write(bytes);
     }
 
-	public void beforeFlushToSocket() throws Throwable {
+	public void beforeFlushToSocket() throws Exception {
 		if (this.committed) return;
 		this.committed = true;
 

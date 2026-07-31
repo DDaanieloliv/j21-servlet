@@ -10,5 +10,5 @@ public interface HttpWriterConduct {
 
 	boolean matches(DefaultHttpServletResponse response);
 
-	void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Throwable;
+	void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Exception;
 }

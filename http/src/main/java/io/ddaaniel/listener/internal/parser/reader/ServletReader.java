@@ -33,7 +33,7 @@ public class ServletReader implements HttpReader {
 		this.http = new HttpProtocolParser(stream);
 	}
 
-	private void isEndOrThrow(Throwable e) throws Throwable {
+	private void isEndOrThrow(Exception e) throws Exception {
 		if(!http.isTerminated()) {
 			throw e;
 		}
@@ -78,7 +78,7 @@ public class ServletReader implements HttpReader {
 					throw new URITooLongException(" -> uri too long, error 414 "); 
 				}
 			}
-		} catch (Throwable  exception) { 
+		} catch (Exception  exception) { 
              if (exception instanceof RuntimeException) throw (RuntimeException) exception;
 			 throw new RuntimeException(" -> Failure when parsing the servlet-request: ", exception); 
 		}

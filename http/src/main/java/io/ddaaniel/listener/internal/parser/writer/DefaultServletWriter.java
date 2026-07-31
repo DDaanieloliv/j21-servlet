@@ -18,7 +18,7 @@ public class DefaultServletWriter implements HttpWriterConduct {
 	}
 
 	@Override
-	public void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Throwable {
+	public void write(WritableByteChannel channel, DefaultHttpServletResponse response) throws Exception {
 		Object body = response.getBufferedBody();
 		HttpHeaders headers = response.getHeaders() != null ? response.getHeaders() : new HttpHeaders();
 		 
