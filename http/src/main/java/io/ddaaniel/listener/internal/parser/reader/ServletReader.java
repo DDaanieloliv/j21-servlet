@@ -45,7 +45,7 @@ public class ServletReader implements HttpReader {
 	}
 
 	@Override
-	public Optional<DefaultHttpServletRequest> readConnection() {
+	public Optional<DefaultHttpServletRequest> readFromConnection() {
 		var builder = new HttpRequestBuilder();
 
 		try {
@@ -66,7 +66,7 @@ public class ServletReader implements HttpReader {
 				}
 
 				var buf = buffer.prepareForParsing();
-				http.parse(buf, builder);
+				http.decode(buf, builder);
 
 				if (http.isTerminated()) {
 					http.restart();

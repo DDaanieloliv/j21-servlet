@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
  */
 public interface HttpProtocol {
 
-	void parse(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception;
+	void decode(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception;
 
 	boolean isTerminated();
 

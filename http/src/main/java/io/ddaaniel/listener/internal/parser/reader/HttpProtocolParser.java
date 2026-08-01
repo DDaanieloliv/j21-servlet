@@ -24,17 +24,17 @@ public class HttpProtocolParser implements HttpProtocol {
 
 	public HttpProtocolParser(ReadableByteChannel conn) {
 		this.stream = conn;
-		this.state = Parser._INIT;
+		this.state = Parser.READ_INITIAL;
 	}
 
 	@Override
-	public void parse(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
+	public void decode(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception {
 		for (;;) {
 			Parser currentState = this.state;
 			Parser nextState = currentState.parse(this.stream, buffer, builder);
 			this.state = nextState;
 			if (log.isLoggable(Level.FINER)) log.log(Level.FINER, " -> parser state transition: {0} -> {1}", new Object[]{currentState, nextState});
-			if (nextState == currentState || nextState == Parser._DONE || nextState == Parser._ERROR) {
+			if (nextState == currentState || nextState == Parser.SKIP_INITIAL_LINE_CHARS || nextState == Parser.BAD_MESSAGE) {
 				break;
 			}
 		}
@@ -42,31 +42,31 @@ public class HttpProtocolParser implements HttpProtocol {
 
 	@Override
 	public boolean isTerminated() {
-		return this.state == Parser._DONE;
+		return this.state == Parser.SKIP_INITIAL_LINE_CHARS;
 	}
 
 	@Override
 	public boolean isFailed() {
-		return this.state == Parser._ERROR;
+		return this.state == Parser.BAD_MESSAGE;
 	}
 
 	@Override
 	public boolean isInit() {
-		return this.state == Parser._INIT;
+		return this.state == Parser.READ_INITIAL;
 	}
 
 	@Override
 	public void restart() {
-		state = Parser._INIT;
+		state = Parser.READ_INITIAL;
 	}
 
 	enum Parser {
 
-		_INIT {
+		READ_INITIAL {
 			@Override
 			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) {
-				var read = 0;
-				var separator = "\r\n";
+				int read = 0;
+				String separator = "\r\n";
 				var start = getStart(buffer);
 				var end = getEndOfLine(buffer, separator, start);
 
@@ -90,7 +90,7 @@ public class HttpProtocolParser implements HttpProtocol {
 				}
 
 				builder.method(parts[0]).uri(parts[1]);
-				return _HEADER;
+				return READ_HEADER;
 			}
 
 			int getStart(ByteBuffer buffer) {
@@ -108,7 +108,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			}
 		},
 
-		_HEADER {
+		READ_HEADER {
 			@Override
 			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) {
 				var separator = "\r\n";
@@ -146,7 +146,7 @@ public class HttpProtocolParser implements HttpProtocol {
 
 					builder.headers().set(new String(name), new String(value));
 				}
-				return _DONE;
+				return SKIP_INITIAL_LINE_CHARS;
 			}
 
 			int getStart(ByteBuffer buffer) {
@@ -168,7 +168,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			}
 		},
 
-		_ERROR {
+		BAD_MESSAGE {
 			@Override
 			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder)
 					throws Exception {
@@ -176,11 +176,11 @@ public class HttpProtocolParser implements HttpProtocol {
 			}
 		},
 
-		_DONE {
+		SKIP_INITIAL_LINE_CHARS {
 			@Override
 			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder)
 					throws Exception {
-				return _DONE;
+				return SKIP_INITIAL_LINE_CHARS;
 			}
 		};
 

@@ -9,5 +9,5 @@ public interface HttpReader {
 
 	boolean canRead();
 
-	Optional<DefaultHttpServletRequest> readConnection();
+	Optional<DefaultHttpServletRequest> readFromConnection();
 }

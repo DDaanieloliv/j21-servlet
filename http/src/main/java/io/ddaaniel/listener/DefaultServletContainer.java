@@ -54,12 +54,6 @@ public class DefaultServletContainer implements ServletContainer {
 		}
 	}
 
-	public DefaultServletContainer addFilter(Filter filter) {
-		this.filterChain.add(filter);
-		return this;
-	}
-
-
 	@Override
 	public DefaultServletContainer loadContainer(int port) throws Exception {
 		var router = new CommonRequestRouter();
@@ -91,6 +85,7 @@ public class DefaultServletContainer implements ServletContainer {
 			log.log(Level.SEVERE, " -> Error when closing server: ", e);
 		}
 	}
+
 
 
 	public DefaultServletContainer loadServletContainer(int port, Handler handler) throws Exception {
@@ -133,7 +128,7 @@ public class DefaultServletContainer implements ServletContainer {
 
 			while (keepAlive && conn.isOpen() && !closed.get()) {
 
-				Optional<DefaultHttpServletRequest> optionalServletRequest = reader.readConnection();
+				Optional<DefaultHttpServletRequest> optionalServletRequest = reader.readFromConnection();
 				if (optionalServletRequest.isEmpty()) break;
 
 				DefaultHttpServletRequest requestWrapper = optionalServletRequest.get();
