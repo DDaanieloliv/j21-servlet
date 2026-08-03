@@ -66,7 +66,6 @@ public class HttpProtocolParser implements HttpProtocol {
 			@Override
 			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) {
 				final String separator = "\r\n";
-				int read = 0;
 				int start = getStart(buffer);
 				int end = getEndOfLine(buffer, separator, start);
 
@@ -76,17 +75,16 @@ public class HttpProtocolParser implements HttpProtocol {
 
 				var line = new byte[end - start];
 				consumeLine(buffer, line);
-				read += (buffer.position() - start);
 				var startLine = new String(line, StandardCharsets.UTF_8);
 				var parts = startLine.split(" ");
 
 				if (parts.length != 3) {
-					throw new MalformedRequestLineException(" -> malformed start-line -- buffer-read: " + read);
+					throw new MalformedRequestLineException();
 				}
 
 				var httpVersion = parts[2].split("/");
 				if (httpVersion.length != 2 || !httpVersion[0].equals("HTTP") || !httpVersion[1].equals("1.1")) {
-					throw new MalformedRequestLineException(" -> malformed request-line -- buffer-read: " + read);
+					throw new MalformedRequestLineException();
 				}
 
 				builder.method(parts[0]).uri(parts[1]);
