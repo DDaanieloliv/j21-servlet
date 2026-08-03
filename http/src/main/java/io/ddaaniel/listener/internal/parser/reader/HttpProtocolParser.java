@@ -65,10 +65,10 @@ public class HttpProtocolParser implements HttpProtocol {
 		READ_INITIAL {
 			@Override
 			public Parser parse(ReadableByteChannel stream, ByteBuffer buffer, HttpRequestBuilder builder) {
+				final String separator = "\r\n";
 				int read = 0;
-				String separator = "\r\n";
-				var start = getStart(buffer);
-				var end = getEndOfLine(buffer, separator, start);
+				int start = getStart(buffer);
+				int end = getEndOfLine(buffer, separator, start);
 
 				if (end == -1) {
 					return this;
