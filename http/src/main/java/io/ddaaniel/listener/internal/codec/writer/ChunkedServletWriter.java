@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.parser.writer;
+package io.ddaaniel.listener.internal.codec.writer;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -34,11 +34,11 @@ public class ChunkedServletWriter implements HttpWriterConduct {
 		InputStream bodyStream = new ByteArrayInputStream(response.getBufferedBody());
 		HttpHeaders headers = response.getHeaders() != null ? response.getHeaders() : new HttpHeaders();
 
-		headers.remove(HttpHeaders.CONTENT_LENGTH);
-		headers.set(HttpHeaders.TRANSFER_ENCODING, "chunked");
-		headers.set(HttpHeaders.TRAILER, "X-Content-SHA256, X-Content-Length");
-		if (headers.get(HttpHeaders.CONTENT_TYPE) == null) {
-			headers.set(HttpHeaders.CONTENT_TYPE, "application/octet-stream");
+		headers.remove(HttpHeaders.HttpHeadersNames.CONTENT_LENGTH);
+		headers.set(HttpHeaders.HttpHeadersNames.TRANSFER_ENCODING, "chunked");
+		headers.set(HttpHeaders.HttpHeadersNames.TRAILER, "X-Content-SHA256, X-Content-Length");
+		if (headers.get(HttpHeaders.HttpHeadersNames.CONTENT_TYPE) == null) {
+			headers.set(HttpHeaders.HttpHeadersNames.CONTENT_TYPE, "application/octet-stream");
 		}
 
 		var code = response.getStatus().value();

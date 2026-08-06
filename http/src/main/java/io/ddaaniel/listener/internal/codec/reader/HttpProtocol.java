@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.parser.reader;
+package io.ddaaniel.listener.internal.codec.reader;
 
 import java.nio.ByteBuffer;
 

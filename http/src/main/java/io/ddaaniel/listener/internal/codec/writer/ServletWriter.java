@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.parser.writer;
+package io.ddaaniel.listener.internal.codec.writer;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
@@ -93,11 +93,12 @@ public class ServletWriter implements HttpServletWriter {
 
 	protected void setSoftwareOrigin(DefaultHttpServletResponse response) {
 		var headers = response.getHeaders();
-		if (!headers.containsHeader(HttpHeaders.DATE)) {
-			headers.set(HttpHeaders.DATE, DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
+		if (!headers.containsHeader(HttpHeaders.HttpHeadersNames.DATE)) {
+			headers.set(HttpHeaders.HttpHeadersNames.DATE,
+					DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
 		}
-		if (!headers.containsHeader(HttpHeaders.SERVER)) {
-			headers.set(HttpHeaders.SERVER, "CustomJavaEngine/1.0");
+		if (!headers.containsHeader(HttpHeaders.HttpHeadersNames.SERVER)) {
+			headers.set(HttpHeaders.HttpHeadersNames.SERVER, "CustomJavaEngine/1.0");
 		}
 	}
 }

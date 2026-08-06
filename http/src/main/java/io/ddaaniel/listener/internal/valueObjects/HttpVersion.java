@@ -1,4 +1,6 @@
-package io.ddaaniel.listener.internal;
+package io.ddaaniel.listener.internal.valueObjects;
+
+import java.util.Locale;
 
 /**
  * HttpVersion
@@ -14,7 +16,11 @@ public class HttpVersion implements Comparable<HttpVersion> {
     private final String text;
 	private final boolean keepAliveDefault;
 
-	public HttpVersion(String text, boolean strict, boolean keepAliveDefault) {
+    public HttpVersion(String text, boolean keepAliveDefault) {
+        this(text, false, keepAliveDefault);
+    }
+
+	private HttpVersion(String text, boolean strict, boolean keepAliveDefault) {
 		if (text.isEmpty()) {
 			throw new IllegalArgumentException("Text must not be empty");
 		}
@@ -44,6 +50,25 @@ public class HttpVersion implements Comparable<HttpVersion> {
         this.text = protocolName + '/' + majorVersion + '.' + minorVersion;
         this.keepAliveDefault = keepAliveDefault;
 	}
+
+	public HttpVersion(String protocolName, int majorVersion, int minorVersion, boolean keepAliveDefault) {
+		if (protocolName.isEmpty()) {
+			throw new IllegalArgumentException("protocolName must not be empty");
+		}
+
+		protocolName = protocolName.toUpperCase(Locale.US);
+		if (hasControlOrWhitespace(protocolName, protocolName.length())) {
+			throw new IllegalArgumentException("Invalid character in protocolname");
+		}
+
+		this.protocolName = protocolName;
+		this.majorVersion = majorVersion;
+		this.minorVersion = minorVersion;
+		this.text = protocolName + '/' + majorVersion + '.' + minorVersion;
+		this.keepAliveDefault = keepAliveDefault;
+		
+	}
+
 
 	private static int parseInteger(String text, int start, int end) {
 		int result = 0;

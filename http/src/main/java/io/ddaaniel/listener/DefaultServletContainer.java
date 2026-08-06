@@ -19,10 +19,10 @@ import io.ddaaniel.core.filter.FilterChain;
 import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
-import io.ddaaniel.listener.internal.parser.reader.DefaultHttpServletRequest;
-import io.ddaaniel.listener.internal.parser.reader.ServletReader;
-import io.ddaaniel.listener.internal.parser.writer.DefaultHttpServletResponse;
-import io.ddaaniel.listener.internal.parser.writer.ServletWriter;
+import io.ddaaniel.listener.internal.codec.reader.DefaultHttpServletRequest;
+import io.ddaaniel.listener.internal.codec.reader.ServletReader;
+import io.ddaaniel.listener.internal.codec.writer.DefaultHttpServletResponse;
+import io.ddaaniel.listener.internal.codec.writer.ServletWriter;
 import io.ddaaniel.routing.CommonRequestRouter;
 
 
@@ -156,20 +156,19 @@ public class DefaultServletContainer implements ServletContainer {
 
 
 	private boolean shouldKeepAlive(DefaultHttpServletRequest request, DefaultHttpServletResponse response) {
-		String reqConnection = request.headers().getFirst(HttpHeaders.CONNECTION);
-		String resConnection = response.getHeaders().getFirst(HttpHeaders.CONNECTION);
+		String reqConnection = request.headers().getFirst(HttpHeaders.HttpHeadersNames.CONNECTION);
+		String resConnection = response.getHeaders().getFirst(HttpHeaders.HttpHeadersNames.CONNECTION);
 
 		boolean clientWantsClose = "close".equalsIgnoreCase(reqConnection);
 		boolean appWantsClose = "close".equalsIgnoreCase(resConnection);
 		boolean shouldClose = response.getStatus().isError();
 
 		if (clientWantsClose || appWantsClose || shouldClose) {
-			response.setHeader(HttpHeaders.CONNECTION, "close");
+			response.setHeader(HttpHeaders.HttpHeadersNames.CONNECTION, "close");
 			return false;
 		}
 
-		response.setHeader(HttpHeaders.CONNECTION, "keep-alive");
-		response.setHeader("keep-Alive", "timeout=5, max=1000");
+		response.setHeader(HttpHeaders.HttpHeadersNames.CONNECTION, "keep-alive");
 
 		return true;
 	}

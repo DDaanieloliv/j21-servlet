@@ -1,6 +1,7 @@
 package io.ddaaniel.listener.internal;
 
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.listener.internal.valueObjects.HttpVersion;
 
 /**
  * HttpMessage

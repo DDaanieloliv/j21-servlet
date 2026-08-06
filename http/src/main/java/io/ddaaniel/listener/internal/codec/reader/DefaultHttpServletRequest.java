@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.parser.reader;
+package io.ddaaniel.listener.internal.codec.reader;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -6,6 +6,66 @@ import java.util.HashMap;
 import java.util.Map;
 
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.listener.internal.DefaultHttpMessage;
+import io.ddaaniel.listener.internal.HttpRequest;
+import io.ddaaniel.listener.internal.valueObjects.HttpMethod;
+import io.ddaaniel.listener.internal.valueObjects.HttpVersion;
+
+class DefaultHttpRequest extends DefaultHttpMessage implements HttpRequest {
+
+	private String uri;
+	private HttpMethod method;
+	
+	public DefaultHttpRequest(HttpVersion version, HttpHeaders headers){
+		super(version, headers);
+	}
+
+    public DefaultHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri, HttpHeaders headers) {
+        super(httpVersion, headers);
+		if (method == null) {
+			throw new IllegalArgumentException("HttpMethod must not be null");
+		}
+		if (uri == null || uri.isEmpty()) {
+			throw new IllegalArgumentException("Uri must not be null or empty");
+		}
+        this.method = method;
+        this.uri = uri;
+    }
+
+	@Override
+	public HttpMethod method() {
+		return method;
+	}
+
+	@Override
+	public HttpRequest setMethod(HttpMethod m) {
+		if (m == null) {
+			throw new IllegalArgumentException("HttpMethod must not be null");
+		}
+		this.method = m;
+		return this;
+	}
+
+	@Override
+	public String uri() {
+		return uri;
+	}
+
+	@Override
+	public HttpRequest setUri(String uri) {
+		if (uri == null) {
+			throw new IllegalArgumentException("Uri must not be null");
+		}
+		this.uri = uri;
+		return this;
+	}
+
+	@Override
+	public HttpRequest setProtocolVersion(HttpVersion v) {
+		super.setProtocolVersion(v);
+		return this;
+	}
+}
 
 /**
  * DefaultHttpServletRequest

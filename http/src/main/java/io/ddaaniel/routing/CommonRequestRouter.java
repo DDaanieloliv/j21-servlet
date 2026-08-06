@@ -11,7 +11,7 @@ import io.ddaaniel.core.httpEntity.ResponseEntity;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.core.httpStatus.HttpStatusCode;
-import io.ddaaniel.listener.internal.parser.reader.DefaultHttpServletRequest;
+import io.ddaaniel.listener.internal.codec.reader.DefaultHttpServletRequest;
 import io.ddaaniel.listener.internal.support.serializer.SerializationManager;
 import io.ddaaniel.listener.internal.support.serializer.SerializationManager.SerializedResult;
 
@@ -59,11 +59,11 @@ public class CommonRequestRouter {
             if (rEntity.getStatusCode() != null) status = rEntity.getStatusCode();
         }
 
-        SerializedResult serialized = SERIALIZER.convert(rawResult, headers.getFirst(HttpHeaders.CONTENT_TYPE));
-        if (headers.get(HttpHeaders.CONTENT_TYPE) == null && serialized.hasContent()) {
-			headers.set(HttpHeaders.CONTENT_TYPE, serialized.contentType());
+        SerializedResult serialized = SERIALIZER.convert(rawResult, headers.getFirst(HttpHeaders.HttpHeadersNames.CONTENT_TYPE));
+        if (headers.get(HttpHeaders.HttpHeadersNames.CONTENT_TYPE) == null && serialized.hasContent()) {
+			headers.set(HttpHeaders.HttpHeadersNames.CONTENT_TYPE, serialized.contentType());
 		}
-		headers.set(HttpHeaders.CONTENT_LENGTH, String.valueOf(serialized.data().length));
+		headers.set(HttpHeaders.HttpHeadersNames.CONTENT_LENGTH, String.valueOf(serialized.data().length));
 
         return Optional.of(new ResponseEntity<>(serialized.data(), headers, status));
 	}

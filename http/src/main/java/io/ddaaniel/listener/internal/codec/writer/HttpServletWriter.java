@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.parser.writer;
+package io.ddaaniel.listener.internal.codec.writer;
 
 import java.nio.channels.WritableByteChannel;
 

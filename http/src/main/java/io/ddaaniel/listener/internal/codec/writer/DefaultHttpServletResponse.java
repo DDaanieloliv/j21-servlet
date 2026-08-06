@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.parser.writer;
+package io.ddaaniel.listener.internal.codec.writer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -82,9 +82,9 @@ public class DefaultHttpServletResponse {
 
 		byte[] bodyBytes = bodyBuffer.toByteArray();
 
-		if (!headers.containsHeader(HttpHeaders.CONTENT_LENGTH) && 
-				!headers.containsHeader(HttpHeaders.TRANSFER_ENCODING)) {
-			headers.set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bodyBytes.length));
+		if (!headers.containsHeader(HttpHeaders.HttpHeadersNames.CONTENT_LENGTH) && 
+				!headers.containsHeader(HttpHeaders.HttpHeadersNames.TRANSFER_ENCODING)) {
+			headers.set(HttpHeaders.HttpHeadersNames.CONTENT_LENGTH, String.valueOf(bodyBytes.length));
 				}
 	}
 
