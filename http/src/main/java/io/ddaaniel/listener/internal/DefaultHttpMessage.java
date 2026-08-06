@@ -38,4 +38,15 @@ public abstract class DefaultHttpMessage implements HttpMessage {
 		this.version = v;
 		return this;
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof DefaultHttpMessage)) {
+			return false;
+		}
+
+		DefaultHttpMessage m = (DefaultHttpMessage) o;
+		return protocolVersion().equals(m.protocolVersion()) && 
+			headers().equals(m.headers());
+	}
 }

@@ -6,6 +6,51 @@ import java.io.IOException;
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.core.httpStatus.HttpStatus;
 import io.ddaaniel.core.httpStatus.HttpStatusCode;
+import io.ddaaniel.listener.internal.DefaultHttpMessage;
+import io.ddaaniel.listener.internal.HttpResponse;
+import io.ddaaniel.listener.internal.valueObjects.HttpVersion;
+
+
+/**
+ * DefaultHttpResponse
+ */
+class DefaultHttpResponse extends DefaultHttpMessage implements HttpResponse {
+
+	private HttpStatusCode status;
+
+	public DefaultHttpResponse(HttpVersion v, HttpHeaders h){
+		super(v, h);
+	}
+
+	@Override
+	public HttpStatusCode status() {
+		return this.status;
+	}
+
+	@Override
+	public HttpResponse setStatus(HttpStatusCode status) {
+		this.status = status;
+		return this;
+	}
+
+	@Override
+	public HttpResponse setProtocolVersion(HttpVersion v) {
+		super.setProtocolVersion(v);
+		return this;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof DefaultHttpResponse)) {
+			return false;
+		}
+
+		DefaultHttpResponse s = (DefaultHttpResponse) o;
+		return status().isSameCodeAs(s.status()) &&
+			super.equals(s);
+	}
+}
+
 
 public class DefaultHttpServletResponse {
 

@@ -23,10 +23,10 @@ class DefaultHttpRequest extends DefaultHttpMessage implements HttpRequest {
     public DefaultHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri, HttpHeaders headers) {
         super(httpVersion, headers);
 		if (method == null) {
-			throw new IllegalArgumentException("HttpMethod must not be null");
+			throw new NullPointerException("method");
 		}
 		if (uri == null || uri.isEmpty()) {
-			throw new IllegalArgumentException("Uri must not be null or empty");
+			throw new NullPointerException("uri");
 		}
         this.method = method;
         this.uri = uri;
@@ -40,7 +40,7 @@ class DefaultHttpRequest extends DefaultHttpMessage implements HttpRequest {
 	@Override
 	public HttpRequest setMethod(HttpMethod m) {
 		if (m == null) {
-			throw new IllegalArgumentException("HttpMethod must not be null");
+			throw new NullPointerException("method");
 		}
 		this.method = m;
 		return this;
@@ -54,7 +54,7 @@ class DefaultHttpRequest extends DefaultHttpMessage implements HttpRequest {
 	@Override
 	public HttpRequest setUri(String uri) {
 		if (uri == null) {
-			throw new IllegalArgumentException("Uri must not be null");
+			throw new IllegalArgumentException("uri");
 		}
 		this.uri = uri;
 		return this;

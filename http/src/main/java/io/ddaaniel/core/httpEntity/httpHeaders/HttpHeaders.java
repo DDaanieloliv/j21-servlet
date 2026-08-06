@@ -522,4 +522,33 @@ public class HttpHeaders {
 		}
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof HttpHeaders)) {
+			return false;
+		}
+
+		HttpHeaders h = (HttpHeaders) o;
+
+		if (h.headers.size() != this.headers.size()) {
+			return false;
+		}
+
+		for (Map.Entry<String, List<String>> entry : this.headerSet()) {
+			String key = entry.getKey();
+			List<String> newValues = h.get(key);
+			List<String> thisValues = entry.getValue();
+
+			if (newValues == null || thisValues.size() != newValues.size()) {
+				return false;
+			}
+
+			if (!newValues.equals(thisValues)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 }

@@ -2,12 +2,11 @@ package io.ddaaniel.listener.internal.codec.reader;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
-import java.util.List;
 
 
-public class HttpProtocolProcessor {
+public abstract class HttpCodec {
 
-    private State currentState = State.READ_INITIAL;
+    private State currentState = State.SKIP_INITIAL_LINE_CHARS;
 
     public enum State {
         SKIP_INITIAL_LINE_CHARS,
@@ -24,7 +23,7 @@ public class HttpProtocolProcessor {
         UPGRADED
     }
 
-    public void decode(ReadableByteChannel stream, ByteBuffer buffer, List<Object> out) {
+    public void decode(ReadableByteChannel stream, ByteBuffer buffer, DefaultHttpServletRequest out) {
 
 		switch (this.currentState) {
 			case SKIP_INITIAL_LINE_CHARS:
