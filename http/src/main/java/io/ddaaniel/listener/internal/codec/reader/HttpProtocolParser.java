@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 import io.ddaaniel.listener.internal.exception.MalformedHeaderException;
 import io.ddaaniel.listener.internal.exception.MalformedRequestLineException;
 import io.ddaaniel.listener.internal.support.HttpBodyInputStream;
-import io.ddaaniel.listener.internal.support.collectionUtil.CollectionUtil;
+import io.ddaaniel.listener.internal.support.codecUtil.CodecUtil;
 
 /**
  * HttpProtocolParser
@@ -96,7 +96,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			}
 
 			int getEndOfLine(ByteBuffer buffer, String separator, int start) {
-				return CollectionUtil.IndexOf(buffer, separator, start);
+				return CodecUtil.IndexOf(buffer, start, separator);
 			}
 
 			void consumeLine(ByteBuffer buffer, byte[] line) {
@@ -134,11 +134,11 @@ public class HttpProtocolParser implements HttpProtocol {
 					}
 
 					var name = parts[0];
-					var value = CollectionUtil.TrimSpace(parts[1]);
-					if (CollectionUtil.HasSuffix(name, " ".getBytes())) {
+					var value = CodecUtil.TrimSpace(parts[1]);
+					if (CodecUtil.HasSuffix(name, " ".getBytes())) {
 						throw new MalformedHeaderException(" -> malformed field-name ");
 					}
-					if (!CollectionUtil.isToken(name)) {
+					if (!CodecUtil.isToken(name)) {
 						throw new MalformedHeaderException(" -> malformed header-name ");
 					}
 
@@ -152,7 +152,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			}
 
 			int getEndOfLine(ByteBuffer buffer, String separator, int start) {
-				return CollectionUtil.IndexOf(buffer, separator, start);
+				return CodecUtil.IndexOf(buffer, start, separator);
 			}
 
 			void consumeLine(ByteBuffer buffer, byte[] line) {
@@ -162,7 +162,7 @@ public class HttpProtocolParser implements HttpProtocol {
 			}
 
 			byte[][] getParts(byte[] headerline) {
-				return CollectionUtil.Split(headerline, ":", 2);
+				return CodecUtil.Split(headerline, ":", 2);
 			}
 		},
 

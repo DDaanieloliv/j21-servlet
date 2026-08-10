@@ -1,4 +1,4 @@
-package io.ddaaniel.listener.internal.support.collectionUtil;
+package io.ddaaniel.listener.internal.support.codecUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -6,9 +6,33 @@ import java.util.Arrays;
 /**
  * CollectionUtil
  */
-public class CollectionUtil {
+public class CodecUtil {
 
-	public  static int IndexOf(ByteBuffer source, String string, int start) {
+
+	public static int count(ByteBuffer source, char ch, final int start, final int length){
+		int result = 0;
+		for (int i = start; i < length; i++) {
+			if (source.get(i) == ch) {
+				result++;
+			}
+		}
+		return result;
+	}
+
+	public static int IndexOf(ByteBuffer source, int start, char string) {
+		var i = start;
+		var size = source.limit();
+		while (i < size) {
+			if (source.get(i) == string) {
+				var match = true;
+				if (match) return i;
+			}
+			i++;
+		}
+		return -1;
+	}
+
+	public static int IndexOf(ByteBuffer source, int start, String string) {
 		var i = start;
 		var size = source.limit();
 		var bytes = string.getBytes();
