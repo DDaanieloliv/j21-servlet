@@ -2,23 +2,45 @@ package io.ddaaniel.listener.internal.codec.reader;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.ddaaniel.listener.internal.HttpMessage;
+import io.ddaaniel.listener.internal.support.ByteProcessor;
 
-import static io.ddaaniel.listener.internal.support.codecUtil.CodecUtil.IndexOf;
+import static io.ddaaniel.listener.internal.support.httpUtil.HttpUtil.IndexOf;
 
-public abstract class HttpCodec {
+public abstract class HttpObjectDecoder {
 
+	private static final int DEFAULT_MAX_INITIAL_LINE_LENGTH = 4096;
+	private static final int DEFAULT_INITIAL_BUFFER_SIZE = 128;
+	private static final int DEFAULT_MAX_HEADER_SIZE = 8192;
 	private static final char DEFAULT_CARRIAGE_RETURN = '\r';
 	private static final char DEFAULT_LINE_FEED = '\n';
 
-
-	private State currentState = State.SKIP_INITIAL_LINE_CHARS;
 	private HttpMessage message;
+	private Runnable defaultStrictCRLFCheck;
+
 	private Line lineParser;
 	private FieldLine fieldParser;
+	private ByteBuffer parserScratchBuffer;
+	private AtomicBoolean httpRestartRequired = new AtomicBoolean();
+	private State decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
+
+	protected HttpObjectDecoder(int max_initial_line_length, int max_header_size){
+		parserScratchBuffer = ByteBuffer.allocate(DEFAULT_INITIAL_BUFFER_SIZE);
+		lineParser = new Line(parserScratchBuffer, max_initial_line_length);
+		fieldParser = new FieldLine(parserScratchBuffer, max_header_size);
+	}
+
 
 	protected abstract HttpMessage createMessage(String[] initialLine);
+
+	private static final ByteProcessor SKIP_CONTROL_CHARS_BYTES = new ByteProcessor() {
+		@Override
+		public boolean process(byte value) {
+			return Character.isISOControl(value) || Character.isWhitespace(value);
+		}
+	};
 
 	public enum State {
 		SKIP_INITIAL_LINE_CHARS,
@@ -95,18 +117,36 @@ public abstract class HttpCodec {
 		return end;
 	}
 
+	private int forEachByte(ByteBuffer buffer, int startIndex, int length, ByteProcessor processor) {
+		try {
+			for (;startIndex < length; ++startIndex) {
+				if (processor.process(buffer.get(startIndex))) {
+					return startIndex;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+
+
+
 
 	public void decode(ReadableByteChannel stream, ByteBuffer buffer, DefaultHttpServletRequest out) {
+		if (httpRestartRequired.get()) {
+			httpRestartToDefaults();
+		}
 
-		switch (this.currentState) {
+		switch (this.decodCurrentState) {
 			case SKIP_INITIAL_LINE_CHARS:
 			case READ_INITIAL:
 				try {
-					ByteBuffer buf = lineParser.parse(buffer);
+					ByteBuffer buf = lineParser.parse(buffer, defaultStrictCRLFCheck);
 					String[] initialLine = splitInitialLine(buf);
 					message = createMessage(initialLine);
-					currentState = State.READ_HEADER;
-				} catch (Exception e) { }
+					decodCurrentState = State.READ_HEADER;
+				} catch (Exception e) { throw e; }
 			case READ_HEADER:
 				break;
 
@@ -134,18 +174,46 @@ public abstract class HttpCodec {
 		}
 	}
 
+	private void httpRestartRequired() {
+		httpRestartRequired.lazySet(true);
+	}
+
+	private void httpRestartToDefaults() {
+		this.message = null;
+		this.decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
+		this.httpRestartRequired.lazySet(false);
+	}
+
+
+
 	/**
 	 * Line
 	 */
 	public class Line extends FieldLine {
 
-		public Line(ByteBuffer buffer) {
-			super(buffer);
+		public Line(ByteBuffer buffer, int maxLength) {
+			super(buffer, maxLength);
 		}
 		
-		public ByteBuffer parse(ByteBuffer buffer) {
+		@Override
+		public ByteBuffer parse(ByteBuffer buffer, Runnable strictCRLFCheck) {
+			httpRestartRequired();
+			final int readableBytes = buffer.remaining();
+			if (readableBytes == 0) {
+				return null;
+			}
+			if (decodCurrentState == State.SKIP_INITIAL_LINE_CHARS 
+					&& skipLineChars(buffer, readableBytes, buffer.position(), strictCRLFCheck)) {
+				return null;
+			}
+			return super.parse(buffer, strictCRLFCheck);
+		}
 
-			return null;
+		private boolean skipLineChars(ByteBuffer buffer, int readableBytes, int readerIndex, Runnable strictCRLFCheck) {
+			final int maxToSkip = Math.min(maxLength, readableBytes);
+			final int firstNonLineIndex = forEachByte(buffer, readerIndex, maxToSkip, strictCRLFCheck == null ? 
+					SKIP_CONTROL_CHARS_BYTES : ByteProcessor.FIND_NON_CRLF);
+			return true;
 		}
 	}
 
@@ -154,13 +222,15 @@ public abstract class HttpCodec {
 	 */
 	public class FieldLine {
 		
-		FieldLine(ByteBuffer seq) {
+		FieldLine(ByteBuffer seq, int maxLength) {
+			this.maxLength = maxLength;
 			this.seq = seq;
 		}
 
 		protected final ByteBuffer seq;
+		protected final int maxLength;
 
-		public ByteBuffer parse(ByteBuffer buffer) {
+		public ByteBuffer parse(ByteBuffer buffer, Runnable strictCRLFCheck) {
 			int start = buffer.position();
 			final int indexOfLf = IndexOf(buffer, start, DEFAULT_LINE_FEED);
 

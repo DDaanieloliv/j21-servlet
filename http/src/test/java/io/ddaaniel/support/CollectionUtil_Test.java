@@ -6,7 +6,8 @@ import java.nio.ByteBuffer;
 
 import org.junit.jupiter.api.Test;
 
-import io.ddaaniel.listener.internal.support.codecUtil.CodecUtil;
+import io.ddaaniel.listener.internal.support.httpUtil.HttpUtil;
+
 
 
 
@@ -19,17 +20,17 @@ public class CollectionUtil_Test {
 	public void assertingIsIndexOf() throws Exception {
 		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
 		var string = "hhh";
-		var result = CodecUtil.IndexOf(source, 0, string);
+		var result = HttpUtil.IndexOf(source, 0, string);
 		assertEquals(7, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
 		string = "hhh";
-		result = CodecUtil.IndexOf(source, 0, string);
+		result = HttpUtil.IndexOf(source, 0, string);
 		assertEquals(20, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
 		string = "hhh";
-		result = CodecUtil.IndexOf(source, 0, string);
+		result = HttpUtil.IndexOf(source, 0, string);
 		assertEquals(-1, result);
 	}
 
@@ -37,17 +38,17 @@ public class CollectionUtil_Test {
 	public void assertingIsIndexOfBuf() throws Exception {
 		var source = ByteBuffer.wrap("AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes());
 		var string = "hhh";
-		var result = CodecUtil.IndexOf(source, 0, string);
+		var result = HttpUtil.IndexOf(source, 0, string);
 		assertEquals(7, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes());
 		string = "hhh";
-		result = CodecUtil.IndexOf(source, 0, string);
+		result = HttpUtil.IndexOf(source, 0, string);
 		assertEquals(20, result);
 
 		source = ByteBuffer.wrap("AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes());
 		string = "hhh";
-		result = CodecUtil.IndexOf(source, 0, string);
+		result = HttpUtil.IndexOf(source, 0, string);
 		assertEquals(-1, result);
 	}
 
@@ -55,17 +56,17 @@ public class CollectionUtil_Test {
 	public void assertingIsIndexOfArr() throws Exception {
 		var source = "AbCdEfGhhhhIjKlMnOpQrStUvWxYz".getBytes();
 		var string = "hhh";
-		var result = CodecUtil.IndexOf(source, string, 0);
+		var result = HttpUtil.IndexOf(source, string, 0);
 		assertEquals(7, result);
 
 		source = "AbCdEfGhhIjKlMnOpQrShhhhtUvWxYz".getBytes();
 		string = "hhh";
-		result = CodecUtil.IndexOf(source, string, 0);
+		result = HttpUtil.IndexOf(source, string, 0);
 		assertEquals(20, result);
 
 		source = "AbCdEfGhhIjKlMnOpQhhrStUhhvWxYz".getBytes();
 		string = "hhh";
-		result = CodecUtil.IndexOf(source, string, 0);
+		result = HttpUtil.IndexOf(source, string, 0);
 		assertEquals(-1, result);
 	}
 
@@ -73,12 +74,12 @@ public class CollectionUtil_Test {
 	public void assertingCountPatternsCorrectly() throws Exception {
 		var source = "AbChhdEfGhhhhIjKlMnOphhQrStUvWxYz".getBytes();
 		var string = "hh";
-		var result = CodecUtil.count(source, string);
+		var result = HttpUtil.count(source, string);
 		assertEquals(4, result);
 
 		source = "AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYhhhzhhh".getBytes();
 		string = "hhh";
-		result = CodecUtil.count(source, string);
+		result = HttpUtil.count(source, string);
 		assertEquals(4, result);
 	}
 
@@ -89,7 +90,7 @@ public class CollectionUtil_Test {
 		var source = "AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYz".getBytes();
 		var string = "hhh";
 		var times = 3;
-		var returns = CodecUtil.Split(source, string, times);
+		var returns = HttpUtil.Split(source, string, times);
 
 		assertEquals(times, returns.length);
 		assertEquals("AbCdEfG", new String(returns[0]));
@@ -104,7 +105,7 @@ public class CollectionUtil_Test {
 		var source = "AbCdEfGhhhhIjKlMnOpQhhhhrStUvWxYhhhzhhh".getBytes();
 		var string = "hhh";
 		var times = -1;
-		var returns = CodecUtil.Split(source, string, times);
+		var returns = HttpUtil.Split(source, string, times);
 
 		assertEquals(returns.length, 5);
 		assertEquals(new String(returns[0]), "AbCdEfG");
@@ -119,7 +120,7 @@ public class CollectionUtil_Test {
 	@Test
 	public void assertingTrimSpaces() throws Exception {
 		var arr = "   AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz   ".getBytes();
-		var result = CodecUtil.TrimSpace(arr);
+		var result = HttpUtil.TrimSpace(arr);
 		assertEquals("AbCdEfGhhhhIjK  lMnOpQhrStUvWxYz", new String(result));
 	}
 
@@ -129,12 +130,12 @@ public class CollectionUtil_Test {
 	public void assertingHasSuffix() throws Exception {
 		var arr = "   AbCdEfGhIjK  lMnOpQhrStUvWxYz   ".getBytes();
 		var slice = "  ".getBytes();
-		var result = CodecUtil.HasSuffix(arr, slice);
+		var result = HttpUtil.HasSuffix(arr, slice);
 		assertEquals(true, result);
 
 		arr = "   AbCdEfGhIjK  lMnOpQhrStUvWxYz ".getBytes();
 		slice = "  ".getBytes();
-		result = CodecUtil.HasSuffix(arr, slice);
+		result = HttpUtil.HasSuffix(arr, slice);
 		assertEquals(false, result);
 	}
 }

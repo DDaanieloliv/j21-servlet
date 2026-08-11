@@ -1,23 +1,12 @@
-package io.ddaaniel.listener.internal.support.codecUtil;
+package io.ddaaniel.listener.internal.support.httpUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- * CollectionUtil
+ * HttpUtil
  */
-public class CodecUtil {
-
-
-	public static int count(ByteBuffer source, char ch, final int start, final int length){
-		int result = 0;
-		for (int i = start; i < length; i++) {
-			if (source.get(i) == ch) {
-				result++;
-			}
-		}
-		return result;
-	}
+public class HttpUtil {
 
 	public static int IndexOf(ByteBuffer source, int start, char string) {
 		var i = start;
