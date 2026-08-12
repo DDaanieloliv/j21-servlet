@@ -4,46 +4,47 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
 import io.ddaaniel.listener.internal.HttpMessage;
+import io.ddaaniel.listener.internal.exception.InvalidLineSeparatorException;
 import io.ddaaniel.listener.internal.exception.TooLongHttpHeaderException;
 import io.ddaaniel.listener.internal.exception.TooLongHttpLineException;
 import io.ddaaniel.listener.internal.support.ByteProcessor;
-import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
 
 import static io.ddaaniel.listener.internal.support.httpUtil.HttpUtil.IndexOf;
 
 public abstract class HttpObjectDecoder {
 
-	private static final int DEFAULT_MAX_INITIAL_LINE_LENGTH = 4096;
-	private static final int DEFAULT_INITIAL_BUFFER_SIZE = 128;
-	private static final int DEFAULT_MAX_HEADER_SIZE = 8192;
-	private static final char DEFAULT_CARRIAGE_RETURN = '\r';
-	private static final char DEFAULT_LINE_FEED = '\n';
+    public static final boolean DEFAULT_STRICT_LINE_PARSING = true;
+	public static final int DEFAULT_MAX_INITIAL_LINE_LENGTH = 4096;
+	public static final int DEFAULT_INITIAL_BUFFER_SIZE = 128;
+	public static final int DEFAULT_MAX_HEADER_SIZE = 8192;
+	public static final char DEFAULT_CARRIAGE_RETURN = '\r';
+	public static final char DEFAULT_LINE_FEED = '\n';
 
+    private static final Runnable THROW_INVALID_LINE_SEPARATOR = new Runnable() {
+        @Override
+        public void run() {
+            throw new InvalidLineSeparatorException();
+        }
+    };
+
+	private String name;
+	private String value;
 	private HttpMessage message;
-	private Runnable defaultStrictCRLFCheck;
-
-	private Line lineParser;
+	private StartLine lineParser;
 	private FieldLine fieldParser;
 	private ByteBuffer parserScratchBuffer;
+	private Runnable defaultStrictCRLFCheck;
 	private AtomicBoolean httpRestartRequired = new AtomicBoolean();
 	private State decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
 
-	protected HttpObjectDecoder(int max_initial_line_length, int max_header_size){
+	protected HttpObjectDecoder() {
 		parserScratchBuffer = ByteBuffer.allocate(DEFAULT_INITIAL_BUFFER_SIZE);
-		lineParser = new Line(parserScratchBuffer, max_initial_line_length);
-		fieldParser = new FieldLine(parserScratchBuffer, max_header_size);
+		lineParser = new StartLine(parserScratchBuffer, DEFAULT_MAX_INITIAL_LINE_LENGTH);
+		fieldParser = new FieldLine(parserScratchBuffer, DEFAULT_MAX_HEADER_SIZE);
+		defaultStrictCRLFCheck = DEFAULT_STRICT_LINE_PARSING ? THROW_INVALID_LINE_SEPARATOR : null;
 	}
-
-
-	protected abstract HttpMessage createMessage(String[] initialLine);
-
-	private static final ByteProcessor SKIP_CONTROL_CHARS_BYTES = new ByteProcessor() {
-		@Override
-		public boolean process(byte value) {
-			return Character.isISOControl(value) || Character.isWhitespace(value);
-		}
-	};
 
 	public enum State {
 		SKIP_INITIAL_LINE_CHARS,
@@ -59,6 +60,11 @@ public abstract class HttpObjectDecoder {
 		BAD_MESSAGE,
 		UPGRADED
 	}
+
+
+	protected abstract boolean isDecodingRequest();
+	protected abstract HttpMessage createMessage(String[] initialLine);
+
 
 	private String[] splitInitialLine(ByteBuffer buffer) {
 		final byte[] asciiBytes = buffer.array();
@@ -122,7 +128,7 @@ public abstract class HttpObjectDecoder {
 
 	private int forEachByte(ByteBuffer buffer, int startIndex, int length, ByteProcessor processor) {
 		try {
-			for (;startIndex < length; ++startIndex) {
+			for (; startIndex < length; ++startIndex) {
 				if (processor.process(buffer.get(startIndex))) {
 					return startIndex;
 				}
@@ -137,7 +143,115 @@ public abstract class HttpObjectDecoder {
 		return buffer.position(length);
 	}
 
+	private ByteBuffer writeBytes(ByteBuffer buffer, int readerIndex, int newSize, ByteBuffer from) {
+		final byte[] temp = new byte[newSize];
+		final int oldReaderIndex = from.position();
 
+		from.position(readerIndex);
+		from.get(temp);
+		from.position(oldReaderIndex);
+
+		return buffer.put(temp);
+	}
+
+	private State readHeader(ByteBuffer line) {
+		if (line == null) {
+			return null;
+		}
+		final HttpHeaders headers = message.headers();
+
+		int lineLength = line.remaining();
+		while (lineLength > 0) {
+			final byte[] lineContent = line.array();
+			final int startLine = line.arrayOffset() + line.position();
+			final byte firstChar = lineContent[startLine];
+			if (name != null && (firstChar == ' ' || firstChar == '\t')) {
+				String trimmedLine = langAsciiString(lineContent, startLine, lineLength);
+				String valueStr = value;
+				value = valueStr + ' ' + trimmedLine;
+			} else {
+				if (name != null) {
+					headers.add(name, value);				
+				}
+				splitHeader(lineContent, startLine, lineLength);
+			}
+
+			line = fieldParser.parse(line, defaultStrictCRLFCheck);
+			if (line == null) {
+				return null;
+			}
+			lineLength = line.remaining();
+		}
+
+		if (name != null) {
+			headers.add(name, value);
+		}
+		name = null;
+		value = null;
+
+		// ...
+
+		return null;
+	}
+
+	private void splitHeader(byte[] line, int start, int length) {
+		final int end = start + length;
+		int nameEnd;
+		final int nameStart = start;
+		final boolean isDecodingRequest = isDecodingRequest();
+		for (nameEnd = nameStart; nameEnd < end; nameEnd++) {
+			byte ch = line[nameEnd];
+			if (ch == ':' || (!isDecodingRequest && isOWS(ch))) {
+				break;
+			}
+		}
+
+		if (nameEnd == end) {
+			throw new IllegalArgumentException("No colon found");
+		}
+		int colonEnd;
+		for (colonEnd = nameEnd;  colonEnd < end; colonEnd++) {
+			if (line[colonEnd] == ':') {
+				colonEnd++;
+				break;
+			}
+		}
+		name = splitHeaderName(line, nameStart, nameEnd - nameStart);
+		final int valueStart = findNonWhitespace(line, colonEnd, end);
+		if (valueStart == end) {
+			value = "";
+		} else {
+			final int valueEnd = findEndOfString(line, start, end);
+			value = langAsciiString(line, valueStart, valueEnd - valueStart);
+		}
+	}
+
+	private int findNonWhitespace(byte[] sb, int offset, int end) {
+		for (int result = offset; result < end; ++result) {
+			byte c = sb[result];
+			if (!Character.isWhitespace(c)) {
+				return result;
+			} else if (!isOWS(c)) {
+				throw new IllegalArgumentException("Invalid separator, only a single space or horizontal tab allowed," +
+						" but received a '" + c + "' (0x" + Integer.toHexString(c) + ")");
+			}
+
+		}
+		return end;
+	}
+
+	private int findEndOfString(byte[] sb, int start, int end) {
+		for (int result = end - 1; result < start; result--) {
+			if (!isOWS(sb[result])) {
+				return result + 1;
+			}
+		}
+		return 0;
+	}
+
+	protected String splitHeaderName(byte[] sb, int start, int length) {
+		return new String(sb, start, length);
+	}
 
 
 	public void decode(ReadableByteChannel stream, ByteBuffer buffer, DefaultHttpServletRequest out) {
@@ -153,8 +267,12 @@ public abstract class HttpObjectDecoder {
 					String[] initialLine = splitInitialLine(buf);
 					message = createMessage(initialLine);
 					decodCurrentState = State.READ_HEADER;
-				} catch (Exception e) { throw e; }
+				} catch (Exception e) {
+					throw e;
+				}
 			case READ_HEADER:
+				ByteBuffer buf = fieldParser.parse(buffer, defaultStrictCRLFCheck);
+				State nextState = readHeader(buffer);
 				break;
 
 			case READ_VARIABLE_LENGTH_CONTENT:
@@ -191,17 +309,15 @@ public abstract class HttpObjectDecoder {
 		this.httpRestartRequired.lazySet(false);
 	}
 
-
-
 	/**
-	 * Line
+	 * StartLine
 	 */
-	public class Line extends FieldLine {
+	public class StartLine extends FieldLine {
 
-		public Line(ByteBuffer buffer, int maxLength) {
+		public StartLine(ByteBuffer buffer, int maxLength) {
 			super(buffer, maxLength);
 		}
-		
+
 		@Override
 		public ByteBuffer parse(ByteBuffer buffer, Runnable strictCRLFCheck) {
 			httpRestartRequired();
@@ -209,7 +325,8 @@ public abstract class HttpObjectDecoder {
 			if (readableBytes == 0) {
 				return null;
 			}
-			if (decodCurrentState == State.SKIP_INITIAL_LINE_CHARS && skipLineChars(buffer, readableBytes, buffer.position(), strictCRLFCheck)) {
+			if (decodCurrentState == State.SKIP_INITIAL_LINE_CHARS
+					&& skipLineChars(buffer, readableBytes, buffer.position(), strictCRLFCheck)) {
 				return null;
 			}
 			return super.parse(buffer, strictCRLFCheck);
@@ -217,7 +334,8 @@ public abstract class HttpObjectDecoder {
 
 		private boolean skipLineChars(ByteBuffer buffer, int readableBytes, int readerIndex, Runnable strictCRLFCheck) {
 			final int maxToSkip = Math.min(maxLength, readableBytes);
-			final ByteProcessor processor = strictCRLFCheck == null ? SKIP_CONTROL_CHARS_BYTES : ByteProcessor.FIND_NON_CRLF;
+			final ByteProcessor processor = strictCRLFCheck == null ? SKIP_CONTROL_CHARS_BYTES
+					: ByteProcessor.FIND_NON_CRLF;
 			final int firstNonLineIndex = forEachByte(buffer, readerIndex, maxToSkip, processor);
 			if (firstNonLineIndex == -1) {
 				skipBytes(buffer, maxToSkip);
@@ -242,15 +360,19 @@ public abstract class HttpObjectDecoder {
 	 * FieldLine
 	 */
 	public class FieldLine {
-		
+
+		int size;
+		protected final ByteBuffer seq;
+		protected final int maxLength;
+
 		FieldLine(ByteBuffer seq, int maxLength) {
 			this.maxLength = maxLength;
 			this.seq = seq;
 		}
 
-		int size;
-		protected final ByteBuffer seq;
-		protected final int maxLength;
+		public void reset() {
+			size = 0;
+		}
 
 		public ByteBuffer parse(ByteBuffer buffer, Runnable strictCRLFCheck) {
 			final int readableBytes = buffer.remaining();
@@ -288,15 +410,21 @@ public abstract class HttpObjectDecoder {
 				throw new TooLongHttpHeaderException("HTTP header is larger than " + maxLength + " bytes.");
 			}
 			this.size = size;
-			final byte[] temp = new byte[newSize];
 			seq.clear();
-			// writeBytes(buffer, start, newSize);
+			writeBytes(seq, start, newSize, buffer);
 			buffer.position(indexOfLf + 1);
-			return null;
-		}
-
-		public void reset() {
-			size = 0;
+			return seq;
 		}
 	}
+
+	private static final ByteProcessor SKIP_CONTROL_CHARS_BYTES = new ByteProcessor() {
+		@Override
+		public boolean process(byte value) {
+			return Character.isISOControl(value) || Character.isWhitespace(value);
+		}
+	};
+
+    private static boolean isOWS(byte ch) {
+        return ch == ' ' || ch == 0x09;
+    }
 }
