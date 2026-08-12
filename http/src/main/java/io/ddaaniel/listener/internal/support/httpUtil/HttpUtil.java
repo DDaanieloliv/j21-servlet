@@ -8,9 +8,9 @@ import java.util.Arrays;
  */
 public class HttpUtil {
 
-	public static int IndexOf(ByteBuffer source, int start, char string) {
+	public static int IndexOf(ByteBuffer source, int start, int indexExclusiv, char string) {
 		var i = start;
-		var size = source.limit();
+		var size = indexExclusiv;
 		while (i < size) {
 			if (source.get(i) == string) {
 				var match = true;

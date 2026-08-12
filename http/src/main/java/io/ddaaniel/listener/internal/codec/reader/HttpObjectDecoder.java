@@ -5,7 +5,10 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.ddaaniel.listener.internal.HttpMessage;
+import io.ddaaniel.listener.internal.exception.TooLongHttpHeaderException;
+import io.ddaaniel.listener.internal.exception.TooLongHttpLineException;
 import io.ddaaniel.listener.internal.support.ByteProcessor;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
 
 import static io.ddaaniel.listener.internal.support.httpUtil.HttpUtil.IndexOf;
 
@@ -130,6 +133,10 @@ public abstract class HttpObjectDecoder {
 		return -1;
 	}
 
+	private ByteBuffer skipBytes(ByteBuffer buffer, int length) {
+		return buffer.position(length);
+	}
+
 
 
 
@@ -202,8 +209,7 @@ public abstract class HttpObjectDecoder {
 			if (readableBytes == 0) {
 				return null;
 			}
-			if (decodCurrentState == State.SKIP_INITIAL_LINE_CHARS 
-					&& skipLineChars(buffer, readableBytes, buffer.position(), strictCRLFCheck)) {
+			if (decodCurrentState == State.SKIP_INITIAL_LINE_CHARS && skipLineChars(buffer, readableBytes, buffer.position(), strictCRLFCheck)) {
 				return null;
 			}
 			return super.parse(buffer, strictCRLFCheck);
@@ -211,9 +217,24 @@ public abstract class HttpObjectDecoder {
 
 		private boolean skipLineChars(ByteBuffer buffer, int readableBytes, int readerIndex, Runnable strictCRLFCheck) {
 			final int maxToSkip = Math.min(maxLength, readableBytes);
-			final int firstNonLineIndex = forEachByte(buffer, readerIndex, maxToSkip, strictCRLFCheck == null ? 
-					SKIP_CONTROL_CHARS_BYTES : ByteProcessor.FIND_NON_CRLF);
-			return true;
+			final ByteProcessor processor = strictCRLFCheck == null ? SKIP_CONTROL_CHARS_BYTES : ByteProcessor.FIND_NON_CRLF;
+			final int firstNonLineIndex = forEachByte(buffer, readerIndex, maxToSkip, processor);
+			if (firstNonLineIndex == -1) {
+				skipBytes(buffer, maxToSkip);
+				if (readableBytes > maxToSkip) {
+					throw new TooLongHttpLineException("An HTTP line is larger than " + maxLength + " bytes.");
+				}
+				return true;
+			}
+			if (strictCRLFCheck != null) {
+				final int b = buffer.get(firstNonLineIndex) & 0xff;
+				if (Character.isISOControl(b)) {
+					strictCRLFCheck.run();
+				}
+			}
+			buffer.position(firstNonLineIndex);
+			decodCurrentState = State.READ_INITIAL;
+			return false;
 		}
 	}
 
@@ -227,14 +248,23 @@ public abstract class HttpObjectDecoder {
 			this.seq = seq;
 		}
 
+		int size;
 		protected final ByteBuffer seq;
 		protected final int maxLength;
 
 		public ByteBuffer parse(ByteBuffer buffer, Runnable strictCRLFCheck) {
-			int start = buffer.position();
-			final int indexOfLf = IndexOf(buffer, start, DEFAULT_LINE_FEED);
+			final int readableBytes = buffer.remaining();
+			final int start = buffer.position();
+			final int maxBodySize = maxLength - size;
+			final long maxBodyWithCRLF = maxBodySize + 2L;
+			final int toProcess = (int) Math.min(maxBodyWithCRLF, readableBytes);
+			final int toIndexExclusive = start + toProcess;
+			final int indexOfLf = IndexOf(buffer, start, toIndexExclusive, DEFAULT_LINE_FEED);
 
 			if (indexOfLf == -1) {
+				if (readableBytes > maxBodySize) {
+					throw new TooLongHttpHeaderException("HTTP header is larger than " + maxLength + " bytes.");
+				}
 				return null;
 			}
 
@@ -242,10 +272,31 @@ public abstract class HttpObjectDecoder {
 			if (indexOfLf > start && buffer.get(indexOfLf - 1) == DEFAULT_CARRIAGE_RETURN) {
 				endOfSeq = indexOfLf - 1;
 			} else {
+				if (strictCRLFCheck != null) {
+					strictCRLFCheck.run();
+				}
 				endOfSeq = indexOfLf;
 			}
-			
+			final int newSize = endOfSeq - start;
+			if (newSize == 0) {
+				seq.clear();
+				buffer.position(indexOfLf - 1);
+				return seq;
+			}
+			int size = this.size + newSize;
+			if (size > maxLength) {
+				throw new TooLongHttpHeaderException("HTTP header is larger than " + maxLength + " bytes.");
+			}
+			this.size = size;
+			final byte[] temp = new byte[newSize];
+			seq.clear();
+			// writeBytes(buffer, start, newSize);
+			buffer.position(indexOfLf + 1);
 			return null;
+		}
+
+		public void reset() {
+			size = 0;
 		}
 	}
 }
