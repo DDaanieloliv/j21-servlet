@@ -15,9 +15,11 @@ import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.listener.internal.HttpMessage;
 import io.ddaaniel.listener.internal.HttpRequest;
 import io.ddaaniel.listener.internal.HttpResponse;
+import io.ddaaniel.listener.internal.exception.ContentLengthNotAllowedException;
 import io.ddaaniel.listener.internal.exception.InvalidLineSeparatorException;
 import io.ddaaniel.listener.internal.exception.TooLongHttpHeaderException;
 import io.ddaaniel.listener.internal.exception.TooLongHttpLineException;
+import io.ddaaniel.listener.internal.exception.TransferEncodingNotAllowed;
 import io.ddaaniel.listener.internal.support.ByteProcessor;
 import io.ddaaniel.listener.internal.valueObjects.HttpMethod;
 import io.ddaaniel.listener.internal.valueObjects.HttpVersion;
@@ -27,6 +29,7 @@ import static io.ddaaniel.listener.internal.support.httpUtil.HttpUtil.IndexOf;
 public abstract class HttpObjectDecoder {
 
 	public static final boolean DEFAULT_ALLOW_DUPLICATE_CONTENT_LENGTHS = false;
+	public static final boolean RFC9112_TRANSFER_ENCODING = true;
 	public static final boolean DEFAULT_STRICT_LINE_PARSING = true;
 	public static final int DEFAULT_MAX_INITIAL_LINE_LENGTH = 4096;
 	public static final int DEFAULT_INITIAL_BUFFER_SIZE = 128;
@@ -43,11 +46,15 @@ public abstract class HttpObjectDecoder {
 
 	private String name;
 	private String value;
+	private long chunkSize;
+	private boolean chunked;
 	private HttpMessage message;
 	private StartLine lineParser;
 	private FieldLine fieldParser;
+	private boolean chunkedSupported;
 	private ByteBuffer parserScratchBuffer;
 	private Runnable defaultStrictCRLFCheck;
+	private boolean useRfc9112TransferEncoding;
 	private long contentLength = Long.MIN_VALUE;
 	private boolean allowDuplicateContentLength;
 	private boolean isSwitchingToNonHttp1Protocol;
@@ -60,6 +67,7 @@ public abstract class HttpObjectDecoder {
 		fieldParser = new FieldLine(parserScratchBuffer, DEFAULT_MAX_HEADER_SIZE);
 		defaultStrictCRLFCheck = DEFAULT_STRICT_LINE_PARSING ? THROW_INVALID_LINE_SEPARATOR : null;
 		allowDuplicateContentLength = DEFAULT_ALLOW_DUPLICATE_CONTENT_LENGTHS;
+		useRfc9112TransferEncoding = RFC9112_TRANSFER_ENCODING;
 	}
 
 	public enum State {
@@ -205,28 +213,39 @@ public abstract class HttpObjectDecoder {
 		value = null;
 
 		/*
-		 *	Set DecoderResult to be usefull on the pipeline ...
+		 * Set DecoderResult to be usefull on the pipeline ...
 		 *
-		 *	main purpose
+		 * main purpose
 		 *
-    	 *	Indicar ao restante da pipeline (handlers a jusante, agregadores, testes, etc.) se a
-		 *	mensagem foi decodificada com sucesso ou se ocorreu um erro, e passar a causa do erro 
-		 *	quando houver. No caso de HttpMessageDecoderResult, além de sinalizar sucesso, transportar 
-		 *	initialLineLength e headerSize (úteis para diagnóstico / limites).
+		 * Indicar ao restante da pipeline (handlers a jusante, agregadores, testes,
+		 * etc.) se a
+		 * mensagem foi decodificada com sucesso ou se ocorreu um erro, e passar a causa
+		 * do erro
+		 * quando houver. No caso de HttpMessageDecoderResult, além de sinalizar
+		 * sucesso, transportar
+		 * initialLineLength e headerSize (úteis para diagnóstico / limites).
 		 *
-		 *	where is used
+		 * where is used
 		 *
-    	 *	O decoder (HttpObjectDecoder) define message.setDecoderResult(...) depois de parsear a
-		 *	linha inicial e headers, ou define DecoderResult.failure(cause) quando detecta uma mensagem
-		 *	inválida (veja invalidMessage/invalidChunk). Handlers e utilitários a jusante verificam
-		 *	message.decoderResult().isSuccess() / isFailure() e agem: retornar 400, fechar conexão, propagar
-		 *	o erro, ou copiar o resultado para um FullHttpRequest/FullHttpResponse (ex.: WebSocket handshakers,
-		 *	HttpObjectAggregator, exemplos de testes). Vários testes e handlers no repositório consultam
-		 *	decoderResult() para decidir comportamento (ex.: StompWebSocketClientPageHandler,
-		 *	WebSocketServerHandshaker, HttpObjectAggregatorTest, MultipleContentLengthHeadersTest).
+		 * O decoder (HttpObjectDecoder) define message.setDecoderResult(...) depois de
+		 * parsear a
+		 * linha inicial e headers, ou define DecoderResult.failure(cause) quando
+		 * detecta uma mensagem
+		 * inválida (veja invalidMessage/invalidChunk). Handlers e utilitários a jusante
+		 * verificam
+		 * message.decoderResult().isSuccess() / isFailure() e agem: retornar 400,
+		 * fechar conexão, propagar
+		 * o erro, ou copiar o resultado para um FullHttpRequest/FullHttpResponse (ex.:
+		 * WebSocket handshakers,
+		 * HttpObjectAggregator, exemplos de testes). Vários testes e handlers no
+		 * repositório consultam
+		 * decoderResult() para decidir comportamento (ex.:
+		 * StompWebSocketClientPageHandler,
+		 * WebSocketServerHandshaker, HttpObjectAggregatorTest,
+		 * MultipleContentLengthHeadersTest).
 		 *
 		 *
-		 * */
+		 */
 
 		List<String> contentLengthFields = headers.getAll(HttpHeadersNames.CONTENT_LENGTH);
 		if (!contentLengthFields.isEmpty()) {
@@ -253,8 +272,74 @@ public abstract class HttpObjectDecoder {
 			setTransferEncodingChunked(message, false);
 			return State.SKIP_CONTROL_CHARS;
 		}
+		if (message.headers().containsHeader(HttpHeadersNames.TRANSFER_ENCODING) &&
+				message.protocolVersion() != HttpVersion.HTTP_1_1 &&
+				useRfc9112TransferEncoding) {
+			throw new TransferEncodingNotAllowed();
+		}
+		if (isTransferEncodingChunked(message)) {
+			this.chunked = true;
+			Iterator<? extends CharSequence> encodingIt = message.headers()
+					.valuesIterator(HttpHeadersNames.TRANSFER_ENCODING);
+			CharSequence v = null;
+			while (encodingIt.hasNext()) {
+				v = encodingIt.next();
+			}
+			final int valueLen = v.length();
+			final int chunkedValueLength = HttpHeadersValue.CHUNKED.length();
+			if (valueLen > chunkedValueLength && !String.valueOf(v).toLowerCase().endsWith("chunked")) {
+				throw new IllegalArgumentException(
+						"chunked must be the last encoding present in the Transfer-Encoding header");
+			}
+			if (message.protocolVersion() == HttpVersion.HTTP_1_1) {
+				if (!contentLengthFields.isEmpty()) {
+					handleTransferEncodingChunkedWithContentLength(message);
+				}
+			}
+			return State.READ_CHUNK_SIZE;
+		}
+		if (contentLength >= 0) {
+			return State.READ_FIXED_LENGTH_CONTENT;
+		}
 
-		return null;
+		return State.READ_VARIABLE_LENGTH_CONTENT;
+	}
+
+	private void handleTransferEncodingChunkedWithContentLength(HttpMessage message) {
+		this.contentLength = Long.MIN_VALUE;
+		if (useRfc9112TransferEncoding) {
+			throw new ContentLengthNotAllowedException(
+					"Content-Length are not allowed in HTTP/1.1 messages that contains a Transfer-Encoding header.");
+		} else {
+			message.headers().remove(HttpHeadersNames.CONTENT_LENGTH);
+			if (isDecodingRequest()) {
+				setKeepAlive(message, false);
+			}
+		}
+	}
+
+	private void setKeepAlive(HttpMessage message, boolean keepAlive) {
+		setKeepAlive(message.headers(), message.protocolVersion(), keepAlive);
+	}
+
+	private void setKeepAlive(HttpHeaders h, HttpVersion version, boolean keepAlive) {
+		if (version.isKeepAliveDefault()) {
+			if (keepAlive) {
+				h.remove(HttpHeadersNames.CONNECTION);
+			} else {
+				h.set(HttpHeadersNames.CONNECTION, HttpHeadersValue.KEEP_ALIVE);
+			}
+		} else {
+			if (keepAlive) {
+				h.set(HttpHeadersNames.CONNECTION, HttpHeadersValue.KEEP_ALIVE);
+			} else {
+				h.remove(HttpHeadersNames.CONNECTION);
+			}
+		}
+	}
+
+	private boolean isTransferEncodingChunked(HttpMessage message) {
+		return message.headers().containsHeader(HttpHeadersNames.TRANSFER_ENCODING, HttpHeadersValue.CHUNKED);
 	}
 
 	private void setTransferEncodingChunked(HttpMessage message, boolean chunked) {
@@ -293,7 +378,7 @@ public abstract class HttpObjectDecoder {
 						&& res.headers().containsHeader(HttpHeadersNames.UPGRADE, HttpHeadersValue.WEBSOCKET));
 			}
 			switch (code) {
-				case 204: 
+				case 204:
 				case 304:
 					return true;
 				default:
@@ -308,9 +393,9 @@ public abstract class HttpObjectDecoder {
 			return false;
 		}
 		String newProtocol = msg.headers().getFirst(HttpHeadersNames.UPGRADE);
-		return newProtocol == null || 
-			!newProtocol.contains(HttpVersion.HTTP_1_0.text()) &&
-			!newProtocol.contains(HttpVersion.HTTP_1_1.text());
+		return newProtocol == null ||
+				!newProtocol.contains(HttpVersion.HTTP_1_0.text()) &&
+						!newProtocol.contains(HttpVersion.HTTP_1_1.text());
 	}
 
 	private int getWebSocketContentLength(HttpMessage message) {
@@ -324,7 +409,7 @@ public abstract class HttpObjectDecoder {
 			}
 		} else if (message instanceof HttpResponse) {
 			HttpResponse res = (HttpResponse) message;
-			if (res.status().value() == 101 && 
+			if (res.status().value() == 101 &&
 					headers.containsHeader(HttpHeadersNames.SEC_WEBSOCKET_ORIGIN) &&
 					headers.containsHeader(HttpHeadersNames.SEC_WEBSOCKET_LOCATION)) {
 				return 16;
@@ -446,7 +531,7 @@ public abstract class HttpObjectDecoder {
 		}
 	}
 
-	public void decode(ReadableByteChannel stream, ByteBuffer buffer, DefaultHttpServletRequest out) {
+	public void decode(ReadableByteChannel stream, ByteBuffer buffer, List<Object> out) {
 		if (httpRestartRequired.get()) {
 			httpRestartToDefaults();
 		}
@@ -463,10 +548,39 @@ public abstract class HttpObjectDecoder {
 					throw e;
 				}
 			case READ_HEADER:
-				ByteBuffer buf = fieldParser.parse(buffer, defaultStrictCRLFCheck);
-				State nextState = readHeader(buffer);
-				break;
+				try {
+					fieldParser.parse(buffer, defaultStrictCRLFCheck);
+					State nextState = readHeader(buffer);
+					decodCurrentState = nextState;
+					switch (nextState) {
+						case SKIP_CONTROL_CHARS:
+							addCurrentMessage(out);
+							addLastObject(out);
+							httpRestartToDefaults();
+							return;
 
+						case READ_CHUNK_SIZE:
+							if (!chunkedSupported)
+								throw new IllegalArgumentException("Chunked messages not supported");
+							addCurrentMessage(out);
+							return;
+						default:
+							if (contentLength == 0 || contentLength == -1 && isDecodingRequest()) {
+								addCurrentMessage(out);
+								addLastObject(out);
+								httpRestartToDefaults();
+								return;
+							}
+							addCurrentMessage(out);
+							if (nextState == State.READ_FIXED_LENGTH_CONTENT) {
+								chunkSize = contentLength;
+							}
+							return;
+					}
+				} catch (Exception e) {
+					invalidMessage(out, message, buffer, e);
+					return;
+				}
 			case READ_VARIABLE_LENGTH_CONTENT:
 				break;
 
@@ -488,6 +602,25 @@ public abstract class HttpObjectDecoder {
 			case BAD_MESSAGE:
 			default:
 				break;
+		}
+	}
+
+	private void invalidMessage(List<Object> out, HttpMessage current, ByteBuffer buffer, Exception e) {
+		decodCurrentState = State.BAD_MESSAGE;
+		this.message = null;
+		// TODO: invalidMessage(message, buffer, e);
+		out.add(current);
+	}
+
+	private void addLastObject(List<Object> out) {
+		out.add(null);
+	}
+
+	private void addCurrentMessage(List<Object> out) {
+		HttpMessage message = this.message;
+		if (message != null) {
+			this.message = null;
+			out.add(message);
 		}
 	}
 
