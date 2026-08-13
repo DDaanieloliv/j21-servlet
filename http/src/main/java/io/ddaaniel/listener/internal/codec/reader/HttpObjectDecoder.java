@@ -2,32 +2,44 @@ package io.ddaaniel.listener.internal.codec.reader;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders.HttpHeadersNames;
+import io.ddaaniel.core.httpEntity.httpHeaders.HttpHeaders.HttpHeadersValue;
+import io.ddaaniel.core.httpStatus.HttpStatus;
+import io.ddaaniel.core.httpStatus.HttpStatusCode;
 import io.ddaaniel.listener.internal.HttpMessage;
+import io.ddaaniel.listener.internal.HttpRequest;
+import io.ddaaniel.listener.internal.HttpResponse;
 import io.ddaaniel.listener.internal.exception.InvalidLineSeparatorException;
 import io.ddaaniel.listener.internal.exception.TooLongHttpHeaderException;
 import io.ddaaniel.listener.internal.exception.TooLongHttpLineException;
 import io.ddaaniel.listener.internal.support.ByteProcessor;
+import io.ddaaniel.listener.internal.valueObjects.HttpMethod;
+import io.ddaaniel.listener.internal.valueObjects.HttpVersion;
 
 import static io.ddaaniel.listener.internal.support.httpUtil.HttpUtil.IndexOf;
 
 public abstract class HttpObjectDecoder {
 
-    public static final boolean DEFAULT_STRICT_LINE_PARSING = true;
+	public static final boolean DEFAULT_ALLOW_DUPLICATE_CONTENT_LENGTHS = false;
+	public static final boolean DEFAULT_STRICT_LINE_PARSING = true;
 	public static final int DEFAULT_MAX_INITIAL_LINE_LENGTH = 4096;
 	public static final int DEFAULT_INITIAL_BUFFER_SIZE = 128;
 	public static final int DEFAULT_MAX_HEADER_SIZE = 8192;
 	public static final char DEFAULT_CARRIAGE_RETURN = '\r';
 	public static final char DEFAULT_LINE_FEED = '\n';
 
-    private static final Runnable THROW_INVALID_LINE_SEPARATOR = new Runnable() {
-        @Override
-        public void run() {
-            throw new InvalidLineSeparatorException();
-        }
-    };
+	private static final Runnable THROW_INVALID_LINE_SEPARATOR = new Runnable() {
+		@Override
+		public void run() {
+			throw new InvalidLineSeparatorException();
+		}
+	};
 
 	private String name;
 	private String value;
@@ -36,6 +48,9 @@ public abstract class HttpObjectDecoder {
 	private FieldLine fieldParser;
 	private ByteBuffer parserScratchBuffer;
 	private Runnable defaultStrictCRLFCheck;
+	private long contentLength = Long.MIN_VALUE;
+	private boolean allowDuplicateContentLength;
+	private boolean isSwitchingToNonHttp1Protocol;
 	private AtomicBoolean httpRestartRequired = new AtomicBoolean();
 	private State decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
 
@@ -44,6 +59,7 @@ public abstract class HttpObjectDecoder {
 		lineParser = new StartLine(parserScratchBuffer, DEFAULT_MAX_INITIAL_LINE_LENGTH);
 		fieldParser = new FieldLine(parserScratchBuffer, DEFAULT_MAX_HEADER_SIZE);
 		defaultStrictCRLFCheck = DEFAULT_STRICT_LINE_PARSING ? THROW_INVALID_LINE_SEPARATOR : null;
+		allowDuplicateContentLength = DEFAULT_ALLOW_DUPLICATE_CONTENT_LENGTHS;
 	}
 
 	public enum State {
@@ -61,10 +77,9 @@ public abstract class HttpObjectDecoder {
 		UPGRADED
 	}
 
-
 	protected abstract boolean isDecodingRequest();
-	protected abstract HttpMessage createMessage(String[] initialLine);
 
+	protected abstract HttpMessage createMessage(String[] initialLine);
 
 	private String[] splitInitialLine(ByteBuffer buffer) {
 		final byte[] asciiBytes = buffer.array();
@@ -171,7 +186,7 @@ public abstract class HttpObjectDecoder {
 				value = valueStr + ' ' + trimmedLine;
 			} else {
 				if (name != null) {
-					headers.add(name, value);				
+					headers.add(name, value);
 				}
 				splitHeader(lineContent, startLine, lineLength);
 			}
@@ -189,9 +204,142 @@ public abstract class HttpObjectDecoder {
 		name = null;
 		value = null;
 
-		// ...
+		/*
+		 *	Set DecoderResult to be usefull on the pipeline ...
+		 *
+		 *	main purpose
+		 *
+    	 *	Indicar ao restante da pipeline (handlers a jusante, agregadores, testes, etc.) se a
+		 *	mensagem foi decodificada com sucesso ou se ocorreu um erro, e passar a causa do erro 
+		 *	quando houver. No caso de HttpMessageDecoderResult, além de sinalizar sucesso, transportar 
+		 *	initialLineLength e headerSize (úteis para diagnóstico / limites).
+		 *
+		 *	where is used
+		 *
+    	 *	O decoder (HttpObjectDecoder) define message.setDecoderResult(...) depois de parsear a
+		 *	linha inicial e headers, ou define DecoderResult.failure(cause) quando detecta uma mensagem
+		 *	inválida (veja invalidMessage/invalidChunk). Handlers e utilitários a jusante verificam
+		 *	message.decoderResult().isSuccess() / isFailure() e agem: retornar 400, fechar conexão, propagar
+		 *	o erro, ou copiar o resultado para um FullHttpRequest/FullHttpResponse (ex.: WebSocket handshakers,
+		 *	HttpObjectAggregator, exemplos de testes). Vários testes e handlers no repositório consultam
+		 *	decoderResult() para decidir comportamento (ex.: StompWebSocketClientPageHandler,
+		 *	WebSocketServerHandshaker, HttpObjectAggregatorTest, MultipleContentLengthHeadersTest).
+		 *
+		 *
+		 * */
+
+		List<String> contentLengthFields = headers.getAll(HttpHeadersNames.CONTENT_LENGTH);
+		if (!contentLengthFields.isEmpty()) {
+			HttpVersion version = message.protocolVersion();
+			boolean isHttp10OrEarlier = version.majorVersion() < 1 ||
+					(version.majorVersion() == 1 && version.minorVersion() == 1);
+			contentLength = normalizeAndGetContentLength(contentLengthFields, isHttp10OrEarlier,
+					allowDuplicateContentLength);
+			if (contentLength != -1) {
+				String lengthValue = contentLengthFields.get(0).trim();
+				if (contentLengthFields.size() > 1 || !isLengthEqual(lengthValue, contentLength)) {
+					headers.set(HttpHeadersNames.CONTENT_LENGTH, String.valueOf(contentLength));
+				}
+			}
+		} else {
+			contentLength = getWebSocketContentLength(message);
+		}
+
+		if (!isDecodingRequest() && message instanceof HttpResponse) {
+			HttpResponse res = (HttpResponse) message;
+			this.isSwitchingToNonHttp1Protocol = isSwitchingToNonHttp1Protocol(res);
+		}
+		if (isContentAwaysEmpty(message)) {
+			setTransferEncodingChunked(message, false);
+			return State.SKIP_CONTROL_CHARS;
+		}
 
 		return null;
+	}
+
+	private void setTransferEncodingChunked(HttpMessage message, boolean chunked) {
+		if (chunked) {
+			message.headers().set(HttpHeadersNames.TRANSFER_ENCODING, HttpHeadersValue.CHUNKED);
+			message.headers().remove(HttpHeadersNames.CONTENT_LENGTH);
+		} else {
+			List<String> encodings = message.headers().getAll(HttpHeadersNames.TRANSFER_ENCODING);
+			if (encodings.isEmpty()) {
+				return;
+			}
+			List<String> values = new ArrayList<String>(encodings);
+			Iterator<String> valuesIt = values.iterator();
+			while (valuesIt.hasNext()) {
+				CharSequence value = valuesIt.next();
+				if (HttpHeadersValue.CHUNKED.contentEquals(value)) {
+					valuesIt.remove();
+				}
+			}
+			if (values.isEmpty()) {
+				message.headers().remove(HttpHeadersNames.TRANSFER_ENCODING);
+			} else {
+				message.headers().set(HttpHeadersNames.TRANSFER_ENCODING, values);
+			}
+		}
+	}
+
+	private boolean isContentAwaysEmpty(HttpMessage msg) {
+		if (msg instanceof HttpResponse) {
+			HttpResponse res = (HttpResponse) msg;
+			final HttpStatusCode status = res.status();
+			final int code = status.value();
+
+			if (status.is1xxInformational()) {
+				return !(code == 101 && !res.headers().containsHeader(HttpHeadersNames.SEC_WEBSOCKET_ACCEPT)
+						&& res.headers().containsHeader(HttpHeadersNames.UPGRADE, HttpHeadersValue.WEBSOCKET));
+			}
+			switch (code) {
+				case 204: 
+				case 304:
+					return true;
+				default:
+					return false;
+			}
+		}
+		return false;
+	}
+
+	private boolean isSwitchingToNonHttp1Protocol(HttpResponse msg) {
+		if (msg.status().value() != HttpStatus.SWITCHING_PROTOCOLS.value()) {
+			return false;
+		}
+		String newProtocol = msg.headers().getFirst(HttpHeadersNames.UPGRADE);
+		return newProtocol == null || 
+			!newProtocol.contains(HttpVersion.HTTP_1_0.text()) &&
+			!newProtocol.contains(HttpVersion.HTTP_1_1.text());
+	}
+
+	private int getWebSocketContentLength(HttpMessage message) {
+		HttpHeaders headers = message.headers();
+		if (message instanceof HttpRequest) {
+			HttpRequest req = (HttpRequest) message;
+			if (HttpMethod.GET.equals(req.method()) &&
+					headers.containsHeader(HttpHeadersNames.SEC_WEBSOCKET_KEY1) &&
+					headers.containsHeader(HttpHeadersNames.SEC_WEBSOCKET_KEY2)) {
+				return 8;
+			}
+		} else if (message instanceof HttpResponse) {
+			HttpResponse res = (HttpResponse) message;
+			if (res.status().value() == 101 && 
+					headers.containsHeader(HttpHeadersNames.SEC_WEBSOCKET_ORIGIN) &&
+					headers.containsHeader(HttpHeadersNames.SEC_WEBSOCKET_LOCATION)) {
+				return 16;
+			}
+		}
+
+		return -1;
+	}
+
+	private boolean isLengthEqual(String lengthValue, long contentLength) {
+		try {
+			return Long.parseLong(lengthValue) == contentLength;
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	private void splitHeader(byte[] line, int start, int length) {
@@ -210,7 +358,7 @@ public abstract class HttpObjectDecoder {
 			throw new IllegalArgumentException("No colon found");
 		}
 		int colonEnd;
-		for (colonEnd = nameEnd;  colonEnd < end; colonEnd++) {
+		for (colonEnd = nameEnd; colonEnd < end; colonEnd++) {
 			if (line[colonEnd] == ':') {
 				colonEnd++;
 				break;
@@ -253,6 +401,50 @@ public abstract class HttpObjectDecoder {
 		return new String(sb, start, length);
 	}
 
+	private long normalizeAndGetContentLength(
+			List<String> contentLengthFields, boolean isHttp10OrEarlier, boolean allowDuplicateContentLength) {
+
+		if (contentLengthFields.isEmpty()) {
+			return -1;
+		}
+		String firstField = contentLengthFields.get(0).toString();
+		boolean multipleContentLengths = contentLengthFields.size() > 1 || firstField.indexOf(',') >= 0;
+
+		if (multipleContentLengths && !isHttp10OrEarlier) {
+			if (allowDuplicateContentLength) {
+				String firstValue = null;
+				for (CharSequence field : contentLengthFields) {
+					String[] tokens = field.toString().split(String.valueOf(','), -1);
+					for (String token : tokens) {
+						String trimmed = token.trim();
+						if (firstValue == null) {
+							firstValue = trimmed;
+						} else if (!trimmed.equals(firstValue)) {
+							throw new IllegalArgumentException(
+									"Multiple Content-Length values found: " + contentLengthFields);
+						}
+					}
+				}
+				firstField = firstValue;
+			} else {
+				throw new IllegalArgumentException("Multiple Content-Length values found: " + contentLengthFields);
+			}
+		}
+
+		if (firstField.isEmpty() || !Character.isDigit(firstField.charAt(0))) {
+			throw new IllegalArgumentException("Content-Length value is not a number: " + firstField);
+		}
+
+		try {
+			final long value = Long.parseLong(firstField);
+			if (value < 0L) {
+				throw new IllegalArgumentException("Content-Length value: " + value + " (expected: >= 0)");
+			}
+			return value;
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Content-Length value is not a number: " + firstField, e);
+		}
+	}
 
 	public void decode(ReadableByteChannel stream, ByteBuffer buffer, DefaultHttpServletRequest out) {
 		if (httpRestartRequired.get()) {
@@ -424,7 +616,7 @@ public abstract class HttpObjectDecoder {
 		}
 	};
 
-    private static boolean isOWS(byte ch) {
-        return ch == ' ' || ch == 0x09;
-    }
+	private static boolean isOWS(byte ch) {
+		return ch == ' ' || ch == 0x09;
+	}
 }

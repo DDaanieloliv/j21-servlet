@@ -10,6 +10,17 @@ public class HttpVersion implements Comparable<HttpVersion> {
 	static final String HTTP_1_0_STRING = "HTTP/1.0";
 	static final String HTTP_1_1_STRING = "HTTP/1.1";
 
+    /**
+     * HTTP/1.0
+     */
+    public static final HttpVersion HTTP_1_0 = new HttpVersion("HTTP", 1, 0, false);
+
+    /**
+     * HTTP/1.1
+     */
+    public static final HttpVersion HTTP_1_1 = new HttpVersion("HTTP", 1, 1, true);
+
+
     private final String protocolName;
     private final int majorVersion;
     private final int minorVersion;

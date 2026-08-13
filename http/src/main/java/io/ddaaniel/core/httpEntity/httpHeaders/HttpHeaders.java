@@ -3,12 +3,14 @@ package io.ddaaniel.core.httpEntity.httpHeaders;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
+
 
 
 
@@ -271,6 +273,16 @@ public class HttpHeaders {
 	}
 
 	/**
+	 * Returns {@code true} if this HttpHeaders contains an entry for the
+	 * given header name and the entry for the header value.
+	 * @param headerName the header name
+	 * @param headerValue the header value
+	 */
+	public boolean containsHeader(String headerName, String headerValue) {
+		return this.headers.containsKey(headerName.toLowerCase());
+	}
+
+	/**
 	 * Get the list of values associated with the given header name, or null.
 	 * @param headerName the header name
 	 */
@@ -303,6 +315,18 @@ public class HttpHeaders {
 		List<String> headerList = new ArrayList<>(1);
 		headerList.add(headerValue);
 		this.headers.put(headerName.toLowerCase(), headerList);
+	}
+
+	/**
+	 * Set the given, single header value under the given name.
+	 * @param headerName the header name
+	 * @param headerValue the header value
+	 * @throws UnsupportedOperationException if adding headers is not supported
+	 * @see #put(String, List)
+	 * @see #add(String, String)
+	 */
+	public void set(String headerName, List<String> headerValues) {
+		this.headers.put(headerName.toLowerCase(), headerValues);
 	}
 
 	/**
@@ -455,6 +479,16 @@ public class HttpHeaders {
 			throw new IllegalArgumentException("Content-Length must be a non-negative number");
 		}
 		set(HttpHeadersNames.CONTENT_LENGTH, Long.toString(contentLength));
+	}
+
+	/**
+	 * Return the length of the body in bytes, as specified by the
+	 * {@code Content-Length} header.
+	 * <p>Returns -1 when the content-length is unknown.
+	 */
+	public List<String> getAll(String headersNames) {
+		List<String> value = get(headersNames);
+		return value ;
 	}
 
 	/**
