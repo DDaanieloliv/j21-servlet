@@ -30,7 +30,7 @@ public class ServletReader implements HttpReader {
 	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
 		this.buffer = new NetworkBuffer();
-		this.http = new HttpProtocolParser(stream);
+		this.http = new HttpPerStateDecoder(stream);
 	}
 
 	private void isEndOrThrow(Exception e) throws Exception {
@@ -47,11 +47,9 @@ public class ServletReader implements HttpReader {
 	@Override
 	public Optional<DefaultHttpServletRequest> readFromConnection() {
 		var builder = new HttpRequestBuilder();
-
 		try {
 			while (canRead()) {
 				int bytesRead = buffer.readFrom(stream);
-
 				if (bytesRead == -1) {
 					if (http.isInit() && !buffer.hasUnparsedData()) {
 						return Optional.empty();
@@ -60,19 +58,15 @@ public class ServletReader implements HttpReader {
 					isEndOrThrow(new MalformedBodyException(" -> body shorter than reported content-length "));
 					return Optional.of(builder.build());
 				}
-
 				if (bytesRead == 0 && !buffer.hasUnparsedData()) {
 					return Optional.empty(); 
 				}
-
 				var buf = buffer.prepareForParsing();
 				http.decode(buf, builder);
-
 				if (http.isTerminated()) {
 					http.restart();
 					return Optional.of(builder.build());
 				}
-
 				if (buffer.isStalled()) {
 					buffer.resetForNextRequest();
 					throw new URITooLongException(" -> uri too long, error 414 "); 

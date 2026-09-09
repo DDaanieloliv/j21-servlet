@@ -29,11 +29,13 @@ import static io.ddaaniel.listener.internal.support.httpUtil.HttpUtil.IndexOf;
 public abstract class HttpObjectDecoder {
 
 	public static final boolean DEFAULT_ALLOW_DUPLICATE_CONTENT_LENGTHS = false;
-	public static final boolean RFC9112_TRANSFER_ENCODING = true;
-	public static final boolean DEFAULT_STRICT_LINE_PARSING = true;
 	public static final int DEFAULT_MAX_INITIAL_LINE_LENGTH = 4096;
+	public static final boolean DEFAULT_STRICT_LINE_PARSING = true;
+	public static final boolean DEFAULT_CHUNKED_SUPPORTED = true;
+	public static final boolean RFC9112_TRANSFER_ENCODING = true;
 	public static final int DEFAULT_INITIAL_BUFFER_SIZE = 128;
 	public static final int DEFAULT_MAX_HEADER_SIZE = 8192;
+	public static final int DEFAULT_MAX_CHUNK_SIZE = 8192;
 	public static final char DEFAULT_CARRIAGE_RETURN = '\r';
 	public static final char DEFAULT_LINE_FEED = '\n';
 
@@ -44,30 +46,41 @@ public abstract class HttpObjectDecoder {
 		}
 	};
 
+	private static final ByteProcessor SKIP_CONTROL_CHARS_BYTES = new ByteProcessor() {
+		@Override
+		public boolean process(byte value) {
+			return Character.isISOControl(value) || Character.isWhitespace(value);
+		}
+	};
+
 	private String name;
 	private String value;
 	private long chunkSize;
 	private boolean chunked;
 	private HttpMessage message;
-	private StartLine lineParser;
-	private FieldLine fieldParser;
-	private boolean chunkedSupported;
-	private ByteBuffer parserScratchBuffer;
-	private Runnable defaultStrictCRLFCheck;
-	private boolean useRfc9112TransferEncoding;
 	private long contentLength = Long.MIN_VALUE;
-	private boolean allowDuplicateContentLength;
-	private boolean isSwitchingToNonHttp1Protocol;
-	private AtomicBoolean httpRestartRequired = new AtomicBoolean();
 	private State decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
+	private AtomicBoolean httpRestartRequired = new AtomicBoolean();
+
+	private final int maxChunkSize;
+	private final StartLine lineParser;
+	private final FieldLine fieldParser;
+	private final boolean chunkedSupported;
+	private final ByteBuffer parserScratchBuffer;
+	private boolean isSwitchingToNonHttp1Protocol;
+	private final Runnable defaultStrictCRLFCheck;
+	private final boolean useRfc9112TransferEncoding;
+	private final boolean allowDuplicateContentLength;
 
 	protected HttpObjectDecoder() {
 		parserScratchBuffer = ByteBuffer.allocate(DEFAULT_INITIAL_BUFFER_SIZE);
+		defaultStrictCRLFCheck = DEFAULT_STRICT_LINE_PARSING ? THROW_INVALID_LINE_SEPARATOR : null;
 		lineParser = new StartLine(parserScratchBuffer, DEFAULT_MAX_INITIAL_LINE_LENGTH);
 		fieldParser = new FieldLine(parserScratchBuffer, DEFAULT_MAX_HEADER_SIZE);
-		defaultStrictCRLFCheck = DEFAULT_STRICT_LINE_PARSING ? THROW_INVALID_LINE_SEPARATOR : null;
 		allowDuplicateContentLength = DEFAULT_ALLOW_DUPLICATE_CONTENT_LENGTHS;
 		useRfc9112TransferEncoding = RFC9112_TRANSFER_ENCODING;
+		chunkedSupported = DEFAULT_CHUNKED_SUPPORTED;
+		maxChunkSize = DEFAULT_MAX_CHUNK_SIZE;
 	}
 
 	public enum State {
@@ -86,6 +99,8 @@ public abstract class HttpObjectDecoder {
 	}
 
 	protected abstract boolean isDecodingRequest();
+
+	protected abstract HttpMessage createInvalidMessage();
 
 	protected abstract HttpMessage createMessage(String[] initialLine);
 
@@ -110,73 +125,6 @@ public abstract class HttpObjectDecoder {
 		};
 	}
 
-	protected String splitFirstWordInitialLine(final byte[] asciiBytes, int start, int length) {
-		return langAsciiString(asciiBytes, start, length);
-	}
-
-	protected String splitSecondWordInitialLine(final byte[] asciiBytes, int start, int length) {
-		return langAsciiString(asciiBytes, start, length);
-	}
-
-	protected String splitThirdWordInitialLine(final byte[] asciiBytes, int start, int length) {
-		return langAsciiString(asciiBytes, start, length);
-	}
-
-	protected String langAsciiString(byte[] asciiBytes, int start, int length) {
-		return new String(asciiBytes, start, length);
-	}
-
-	private int findNonSPLenient(ByteBuffer buffer, final int start, final int end) {
-		for (int result = start; result < end; result++) {
-			final byte ch = buffer.get(result);
-			if (ch == ' ') {
-				continue;
-			}
-			if (Character.isSpaceChar(ch)) {
-				throw new IllegalArgumentException("Invalid char on start-line");
-			}
-			return result;
-		}
-		return end;
-	}
-
-	private int findSPLenient(ByteBuffer buffer, final int start, final int end) {
-		for (int result = start; result < end; result++) {
-			if (buffer.get(result) == ' ') {
-				return result;
-			}
-		}
-		return end;
-	}
-
-	private int forEachByte(ByteBuffer buffer, int startIndex, int length, ByteProcessor processor) {
-		try {
-			for (; startIndex < length; ++startIndex) {
-				if (processor.process(buffer.get(startIndex))) {
-					return startIndex;
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return -1;
-	}
-
-	private ByteBuffer skipBytes(ByteBuffer buffer, int length) {
-		return buffer.position(length);
-	}
-
-	private ByteBuffer writeBytes(ByteBuffer buffer, int readerIndex, int newSize, ByteBuffer from) {
-		final byte[] temp = new byte[newSize];
-		final int oldReaderIndex = from.position();
-
-		from.position(readerIndex);
-		from.get(temp);
-		from.position(oldReaderIndex);
-
-		return buffer.put(temp);
-	}
-
 	private State readHeader(ByteBuffer line) {
 		if (line == null) {
 			return null;
@@ -198,55 +146,19 @@ public abstract class HttpObjectDecoder {
 				}
 				splitHeader(lineContent, startLine, lineLength);
 			}
-
 			line = fieldParser.parse(line, defaultStrictCRLFCheck);
 			if (line == null) {
 				return null;
 			}
 			lineLength = line.remaining();
 		}
-
 		if (name != null) {
 			headers.add(name, value);
 		}
 		name = null;
 		value = null;
 
-		/*
-		 * Set DecoderResult to be usefull on the pipeline ...
-		 *
-		 * main purpose
-		 *
-		 * Indicar ao restante da pipeline (handlers a jusante, agregadores, testes,
-		 * etc.) se a
-		 * mensagem foi decodificada com sucesso ou se ocorreu um erro, e passar a causa
-		 * do erro
-		 * quando houver. No caso de HttpMessageDecoderResult, além de sinalizar
-		 * sucesso, transportar
-		 * initialLineLength e headerSize (úteis para diagnóstico / limites).
-		 *
-		 * where is used
-		 *
-		 * O decoder (HttpObjectDecoder) define message.setDecoderResult(...) depois de
-		 * parsear a
-		 * linha inicial e headers, ou define DecoderResult.failure(cause) quando
-		 * detecta uma mensagem
-		 * inválida (veja invalidMessage/invalidChunk). Handlers e utilitários a jusante
-		 * verificam
-		 * message.decoderResult().isSuccess() / isFailure() e agem: retornar 400,
-		 * fechar conexão, propagar
-		 * o erro, ou copiar o resultado para um FullHttpRequest/FullHttpResponse (ex.:
-		 * WebSocket handshakers,
-		 * HttpObjectAggregator, exemplos de testes). Vários testes e handlers no
-		 * repositório consultam
-		 * decoderResult() para decidir comportamento (ex.:
-		 * StompWebSocketClientPageHandler,
-		 * WebSocketServerHandshaker, HttpObjectAggregatorTest,
-		 * MultipleContentLengthHeadersTest).
-		 *
-		 *
-		 */
-
+		/* Set DecoderResult to be usefull on the pipeline ... */
 		List<String> contentLengthFields = headers.getAll(HttpHeadersNames.CONTENT_LENGTH);
 		if (!contentLengthFields.isEmpty()) {
 			HttpVersion version = message.protocolVersion();
@@ -301,25 +213,140 @@ public abstract class HttpObjectDecoder {
 		if (contentLength >= 0) {
 			return State.READ_FIXED_LENGTH_CONTENT;
 		}
-
 		return State.READ_VARIABLE_LENGTH_CONTENT;
+	}
+
+
+	protected String splitFirstWordInitialLine(final byte[] asciiBytes, int start, int length) {
+		return langAsciiString(asciiBytes, start, length);
+	}
+
+	protected String splitSecondWordInitialLine(final byte[] asciiBytes, int start, int length) {
+		return langAsciiString(asciiBytes, start, length);
+	}
+
+	protected String splitThirdWordInitialLine(final byte[] asciiBytes, int start, int length) {
+		return langAsciiString(asciiBytes, start, length);
+	}
+
+	protected String langAsciiString(byte[] asciiBytes, int start, int length) {
+		return new String(asciiBytes, start, length);
+	}
+
+	private void setKeepAlive(HttpMessage message, boolean keepAlive) {
+		setKeepAlive(message.headers(), message.protocolVersion(), keepAlive);
+	}
+
+	private ByteBuffer skipBytes(ByteBuffer buffer, int length) {
+		return buffer.position(length);
+	}
+
+	protected String splitHeaderName(byte[] sb, int start, int length) {
+		return new String(sb, start, length);
+	}
+
+	private boolean isTransferEncodingChunked(HttpMessage message) {
+		return message.headers().containsHeader(HttpHeadersNames.TRANSFER_ENCODING, HttpHeadersValue.CHUNKED);
+	}
+
+
+	private void httpRestartToDefaults() {
+		this.message = null;
+		this.decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
+		this.httpRestartRequired.lazySet(false);
+	}
+
+	private void addCurrentMessage(List<Object> out) {
+		HttpMessage message = this.message;
+		if (message != null) {
+			this.message = null;
+			out.add(message);
+		}
+	}
+
+	private void addLastObject(List<Object> out) {
+		out.add(null);
+	}
+
+	private void httpRestartRequired() {
+		httpRestartRequired.lazySet(true);
+	}
+
+	private static boolean isOWS(byte ch) {
+		return ch == ' ' || ch == 0x09;
+	}
+
+	private int findEndOfString(byte[] sb, int start, int end) {
+		for (int result = end - 1; result < start; result--) {
+			if (!isOWS(sb[result])) {
+				return result + 1;
+			}
+		}
+		return 0;
+	}
+
+	private boolean isLengthEqual(String lengthValue, long contentLength) {
+		try {
+			return Long.parseLong(lengthValue) == contentLength;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+
+	private int findSPLenient(ByteBuffer buffer, final int start, final int end) {
+		for (int result = start; result < end; result++) {
+			if (buffer.get(result) == ' ') {
+				return result;
+			}
+		}
+		return end;
+	}
+
+	private int findNonSPLenient(ByteBuffer buffer, final int start, final int end) {
+		for (int result = start; result < end; result++) {
+			final byte ch = buffer.get(result);
+			if (ch == ' ') {
+				continue;
+			}
+			if (Character.isSpaceChar(ch)) {
+				throw new IllegalArgumentException("Invalid char on start-line");
+			}
+			return result;
+		}
+		return end;
+	}
+
+
+	private ByteBuffer writeBytes(ByteBuffer buffer, int readerIndex, int newSize, ByteBuffer from) {
+		final byte[] temp = new byte[newSize];
+		final int oldReaderIndex = from.position();
+		from.position(readerIndex);
+		from.get(temp);
+		from.position(oldReaderIndex);
+		return buffer.put(temp);
+	}
+
+	private int forEachByte(ByteBuffer buffer, int startIndex, int length, ByteProcessor processor) {
+		int endIndex = startIndex + length;
+		for (int index = startIndex; index < endIndex; index++) {
+			if (!processor.process(buffer.get(index))) {
+				return index;
+			}
+		}
+		return -1;
 	}
 
 	private void handleTransferEncodingChunkedWithContentLength(HttpMessage message) {
 		this.contentLength = Long.MIN_VALUE;
 		if (useRfc9112TransferEncoding) {
-			throw new ContentLengthNotAllowedException(
-					"Content-Length are not allowed in HTTP/1.1 messages that contains a Transfer-Encoding header.");
+			throw new ContentLengthNotAllowedException();
 		} else {
 			message.headers().remove(HttpHeadersNames.CONTENT_LENGTH);
 			if (isDecodingRequest()) {
 				setKeepAlive(message, false);
 			}
 		}
-	}
-
-	private void setKeepAlive(HttpMessage message, boolean keepAlive) {
-		setKeepAlive(message.headers(), message.protocolVersion(), keepAlive);
 	}
 
 	private void setKeepAlive(HttpHeaders h, HttpVersion version, boolean keepAlive) {
@@ -338,9 +365,31 @@ public abstract class HttpObjectDecoder {
 		}
 	}
 
-	private boolean isTransferEncodingChunked(HttpMessage message) {
-		return message.headers().containsHeader(HttpHeadersNames.TRANSFER_ENCODING, HttpHeadersValue.CHUNKED);
+	private int findNonWhitespace(byte[] sb, int offset, int end) {
+		for (int result = offset; result < end; ++result) {
+			byte c = sb[result];
+			if (!Character.isWhitespace(c)) {
+				return result;
+			} else if (!isOWS(c)) {
+				throw new IllegalArgumentException("Invalid separator, only a single space or horizontal tab allowed," +
+						" but received a '" + c + "' (0x" + Integer.toHexString(c) + ")");
+			}
+		}
+		return end;
 	}
+
+	private void invalidMessage(List<Object> out, HttpMessage current, ByteBuffer in, Exception couse) {
+		decodCurrentState = State.BAD_MESSAGE;
+		this.message = null;
+		skipBytes(in, in.remaining());
+		if (current == null) {
+			current = createInvalidMessage();
+		}
+		/* current.setDecoderResult(DecoderResult.failure(cause)); */
+		out.add(current);
+	}
+
+
 
 	private void setTransferEncodingChunked(HttpMessage message, boolean chunked) {
 		if (chunked) {
@@ -415,17 +464,9 @@ public abstract class HttpObjectDecoder {
 				return 16;
 			}
 		}
-
 		return -1;
 	}
 
-	private boolean isLengthEqual(String lengthValue, long contentLength) {
-		try {
-			return Long.parseLong(lengthValue) == contentLength;
-		} catch (Exception e) {
-			return false;
-		}
-	}
 
 	private void splitHeader(byte[] line, int start, int length) {
 		final int end = start + length;
@@ -459,32 +500,6 @@ public abstract class HttpObjectDecoder {
 		}
 	}
 
-	private int findNonWhitespace(byte[] sb, int offset, int end) {
-		for (int result = offset; result < end; ++result) {
-			byte c = sb[result];
-			if (!Character.isWhitespace(c)) {
-				return result;
-			} else if (!isOWS(c)) {
-				throw new IllegalArgumentException("Invalid separator, only a single space or horizontal tab allowed," +
-						" but received a '" + c + "' (0x" + Integer.toHexString(c) + ")");
-			}
-
-		}
-		return end;
-	}
-
-	private int findEndOfString(byte[] sb, int start, int end) {
-		for (int result = end - 1; result < start; result--) {
-			if (!isOWS(sb[result])) {
-				return result + 1;
-			}
-		}
-		return 0;
-	}
-
-	protected String splitHeaderName(byte[] sb, int start, int length) {
-		return new String(sb, start, length);
-	}
 
 	private long normalizeAndGetContentLength(
 			List<String> contentLengthFields, boolean isHttp10OrEarlier, boolean allowDuplicateContentLength) {
@@ -531,108 +546,35 @@ public abstract class HttpObjectDecoder {
 		}
 	}
 
-	public void decode(ReadableByteChannel stream, ByteBuffer buffer, List<Object> out) {
-		if (httpRestartRequired.get()) {
-			httpRestartToDefaults();
-		}
-
-		switch (this.decodCurrentState) {
-			case SKIP_INITIAL_LINE_CHARS:
-			case READ_INITIAL:
-				try {
-					ByteBuffer buf = lineParser.parse(buffer, defaultStrictCRLFCheck);
-					String[] initialLine = splitInitialLine(buf);
-					message = createMessage(initialLine);
-					decodCurrentState = State.READ_HEADER;
-				} catch (Exception e) {
-					throw e;
-				}
-			case READ_HEADER:
-				try {
-					fieldParser.parse(buffer, defaultStrictCRLFCheck);
-					State nextState = readHeader(buffer);
-					decodCurrentState = nextState;
-					switch (nextState) {
-						case SKIP_CONTROL_CHARS:
-							addCurrentMessage(out);
-							addLastObject(out);
-							httpRestartToDefaults();
-							return;
-
-						case READ_CHUNK_SIZE:
-							if (!chunkedSupported)
-								throw new IllegalArgumentException("Chunked messages not supported");
-							addCurrentMessage(out);
-							return;
-						default:
-							if (contentLength == 0 || contentLength == -1 && isDecodingRequest()) {
-								addCurrentMessage(out);
-								addLastObject(out);
-								httpRestartToDefaults();
-								return;
-							}
-							addCurrentMessage(out);
-							if (nextState == State.READ_FIXED_LENGTH_CONTENT) {
-								chunkSize = contentLength;
-							}
-							return;
-					}
-				} catch (Exception e) {
-					invalidMessage(out, message, buffer, e);
-					return;
-				}
-			case READ_VARIABLE_LENGTH_CONTENT:
-				break;
-
-			case READ_FIXED_LENGTH_CONTENT:
-				break;
+	private void afterHeadersRead(List<Object> out, State state) {
+		switch (state) {
+			case SKIP_CONTROL_CHARS:
+				addCurrentMessage(out);
+				addLastObject(out);
+				httpRestartToDefaults();
+				return;
 
 			case READ_CHUNK_SIZE:
-				break;
-
-			case READ_CHUNKED_CONTENT:
-				break;
-
-			case READ_CHUNK_DELIMITER:
-				break;
-
-			case READ_CHUNK_FOOTER:
-				break;
-
-			case BAD_MESSAGE:
+				if (!chunkedSupported) {
+					throw new IllegalArgumentException("Chunked messages not supported");
+				}
+				addCurrentMessage(out);
+				return;
 			default:
-				break;
+				if (contentLength == 0 || contentLength == -1 && isDecodingRequest()) {
+					addCurrentMessage(out);
+					addLastObject(out);
+					httpRestartToDefaults();
+					return;
+				}
+				addCurrentMessage(out);
+				if (state == State.READ_FIXED_LENGTH_CONTENT) {
+					chunkSize = contentLength;
+				}
+				return;
 		}
 	}
 
-	private void invalidMessage(List<Object> out, HttpMessage current, ByteBuffer buffer, Exception e) {
-		decodCurrentState = State.BAD_MESSAGE;
-		this.message = null;
-		// TODO: invalidMessage(message, buffer, e);
-		out.add(current);
-	}
-
-	private void addLastObject(List<Object> out) {
-		out.add(null);
-	}
-
-	private void addCurrentMessage(List<Object> out) {
-		HttpMessage message = this.message;
-		if (message != null) {
-			this.message = null;
-			out.add(message);
-		}
-	}
-
-	private void httpRestartRequired() {
-		httpRestartRequired.lazySet(true);
-	}
-
-	private void httpRestartToDefaults() {
-		this.message = null;
-		this.decodCurrentState = State.SKIP_INITIAL_LINE_CHARS;
-		this.httpRestartRequired.lazySet(false);
-	}
 
 	/**
 	 * StartLine
@@ -742,14 +684,55 @@ public abstract class HttpObjectDecoder {
 		}
 	}
 
-	private static final ByteProcessor SKIP_CONTROL_CHARS_BYTES = new ByteProcessor() {
-		@Override
-		public boolean process(byte value) {
-			return Character.isISOControl(value) || Character.isWhitespace(value);
-		}
-	};
 
-	private static boolean isOWS(byte ch) {
-		return ch == ' ' || ch == 0x09;
+	public void decode(ReadableByteChannel stream, ByteBuffer buffer, List<Object> out) {
+		if (httpRestartRequired.get()) {
+			httpRestartToDefaults();
+		}
+
+		switch (this.decodCurrentState) {
+			case SKIP_INITIAL_LINE_CHARS:
+			case READ_INITIAL:
+				try {
+					ByteBuffer buf = lineParser.parse(buffer, defaultStrictCRLFCheck);
+					String[] initialLine = splitInitialLine(buf);
+					message = createMessage(initialLine);
+					decodCurrentState = State.READ_HEADER;
+				} catch (Exception e) {
+					invalidMessage(out, message, buffer, e);
+					return;
+				}
+			case READ_HEADER:
+				try {
+					fieldParser.parse(buffer, defaultStrictCRLFCheck);
+					State nextState = readHeader(buffer);
+					decodCurrentState = nextState;
+					afterHeadersRead(out, nextState);
+				} catch (Exception e) {
+					invalidMessage(out, message, buffer, e);
+					return;
+				}
+			case READ_VARIABLE_LENGTH_CONTENT:
+				break;
+
+			case READ_FIXED_LENGTH_CONTENT:
+				break;
+
+			case READ_CHUNK_SIZE:
+				break;
+
+			case READ_CHUNKED_CONTENT:
+				break;
+
+			case READ_CHUNK_DELIMITER:
+				break;
+
+			case READ_CHUNK_FOOTER:
+				break;
+
+			case BAD_MESSAGE:
+			default:
+				break;
+		}
 	}
 }
