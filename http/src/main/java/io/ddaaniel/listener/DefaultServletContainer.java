@@ -62,9 +62,7 @@ public class DefaultServletContainer implements ServletContainer {
 				log.log(Level.FINE, " -> Dispatching request [{0} {1}]", 
 						new Object[]{ req.method(), req.uri() });
 			}
-
 			var responseEntity = router.dispatch(req);
-
 			if (responseEntity.isPresent()) {
 				ResponseEntity<?> r = responseEntity.get();
 				res.setResponse(r.getBody(), r.getHeaders(), r.getStatusCode());
@@ -91,7 +89,6 @@ public class DefaultServletContainer implements ServletContainer {
 	public DefaultServletContainer loadServletContainer(int port, Handler handler) throws Exception {
 		this.closed.set(false);
 		this.handler = handler;
-
 		this.listener = ServerSocketChannel.open();
 		this.listener.bind(new InetSocketAddress(port));
 
@@ -110,7 +107,9 @@ public class DefaultServletContainer implements ServletContainer {
 					if (socketChannel != null) socketChannel.close();
 					return;
 				}
-				executor.execute(() -> { handleConnection(socketChannel); });
+				executor.execute(() -> { 
+					handleConnection(socketChannel); 
+				});
 			}
 		} catch (Exception e) { 
 			if (!closed.get()) {

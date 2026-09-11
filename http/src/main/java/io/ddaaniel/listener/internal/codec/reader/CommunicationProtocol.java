@@ -3,9 +3,9 @@ package io.ddaaniel.listener.internal.codec.reader;
 import java.nio.ByteBuffer;
 
 /**
- * HttpProtocol
+ * CommunicationProtocol
  */
-public interface HttpProtocol {
+public interface CommunicationProtocol {
 
 	void decode(ByteBuffer buffer, HttpRequestBuilder builder) throws Exception;
 

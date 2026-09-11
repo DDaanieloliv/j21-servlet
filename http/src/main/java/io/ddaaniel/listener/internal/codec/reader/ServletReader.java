@@ -12,17 +12,17 @@ import io.ddaaniel.listener.internal.exception.URITooLongException;
 /**
  * ServletReader
  */
-public class ServletReader implements HttpReader {
+public class ServletReader implements Reader {
 
-	private HttpProtocol http;
+	private CommunicationProtocol decoder;
 
 	private NetworkBuffer buffer;
 
 	private ReadableByteChannel stream;
 
 
-	public ServletReader(ReadableByteChannel stream, HttpProtocol parser) {
-		this.http = parser;
+	public ServletReader(ReadableByteChannel stream, CommunicationProtocol parser) {
+		this.decoder = parser;
 		this.stream = stream;
 		this.buffer = new NetworkBuffer();
 	}
@@ -30,18 +30,18 @@ public class ServletReader implements HttpReader {
 	public ServletReader(ReadableByteChannel stream) {
 		this.stream = stream;
 		this.buffer = new NetworkBuffer();
-		this.http = new HttpPerStateDecoder(stream);
+		this.decoder = new HttpStateLessDecoder(stream);
 	}
 
 	private void isEndOrThrow(Exception e) throws Exception {
-		if(!http.isTerminated()) {
+		if(!decoder.isTerminated()) {
 			throw e;
 		}
 	}
 
 	@Override
 	public boolean canRead() {
-		return !http.isTerminated() && !http.isFailed();
+		return !decoder.isTerminated() && !decoder.isFailed();
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public class ServletReader implements HttpReader {
 			while (canRead()) {
 				int bytesRead = buffer.readFrom(stream);
 				if (bytesRead == -1) {
-					if (http.isInit() && !buffer.hasUnparsedData()) {
+					if (decoder.isInit() && !buffer.hasUnparsedData()) {
 						return Optional.empty();
 					}
 					buffer.forceFlipForBody();
@@ -62,9 +62,9 @@ public class ServletReader implements HttpReader {
 					return Optional.empty(); 
 				}
 				var buf = buffer.prepareForParsing();
-				http.decode(buf, builder);
-				if (http.isTerminated()) {
-					http.restart();
+				decoder.decode(buf, builder);
+				if (decoder.isTerminated()) {
+					decoder.restart();
 					return Optional.of(builder.build());
 				}
 				if (buffer.isStalled()) {

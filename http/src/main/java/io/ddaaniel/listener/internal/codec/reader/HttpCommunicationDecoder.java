@@ -12,13 +12,13 @@ import io.ddaaniel.listener.internal.support.HttpBodyInputStream;
 import io.ddaaniel.listener.internal.support.httpUtil.HttpUtil;
 
 /**
- * HttpPerStateDecoder
+ * HttpCommunicationDecoder
  */
-public class HttpPerStateDecoder implements HttpProtocol {
+public class HttpCommunicationDecoder implements CommunicationProtocol {
 
 	private Parser state;
 	private ReadableByteChannel stream;
-	private static final Logger log = Logger.getLogger(HttpPerStateDecoder.class.getName());
+	private static final Logger log = Logger.getLogger(HttpCommunicationDecoder.class.getName());
 
 	enum Parser {
 		SKIP_INITIAL_LINE_CHARS,
@@ -27,7 +27,7 @@ public class HttpPerStateDecoder implements HttpProtocol {
 		BAD_MESSAGE;
 	}
 
-	public HttpPerStateDecoder(ReadableByteChannel conn) {
+	public HttpCommunicationDecoder(ReadableByteChannel conn) {
 		this.stream = conn;
 		this.state = Parser.READ_INITIAL;
 	}

@@ -3,9 +3,9 @@ package io.ddaaniel.listener.internal.codec.reader;
 import java.util.Optional;
 
 /**
- * HttpReader
+ * Reader
  */
-public interface HttpReader {
+public interface Reader {
 
 	boolean canRead();
 
