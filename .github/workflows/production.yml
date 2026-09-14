@@ -1,0 +1,42 @@
+name: Production
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv server/.venv
+          server/.venv/bin/python -m pip install \
+            -r server/integration/python/requirements.txt
+
+      - name: Verify
+        run: mvn verify
+
+      - name: Deployment placeholder
+        run: |
+          echo "Production deployment will be configured later."
