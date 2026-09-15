@@ -1,0 +1,145 @@
+name: Production
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - production
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Identify staging promotion
+        id: promotion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_MERGE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          PROMOTION_NAME="staging-promotion-${STAGING_MERGE_SHA}"
+
+          echo "Looking for:"
+          echo "$PROMOTION_NAME"
+
+          ARTIFACT_ID=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PROMOTION_NAME}" \
+            --jq '.artifacts
+                  | map(select(.expired == false))
+                  | .[0].id')
+
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "No staging promotion found for $STAGING_MERGE_SHA"
+            exit 1
+          fi
+
+          echo "promotion_name=$PROMOTION_NAME" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
+
+          echo "Promotion artifact ID: $ARTIFACT_ID"
+
+      - name: Find staging workflow run
+        id: staging
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.promotion.outputs.artifact_id }}
+        run: |
+          RUN_ID=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}" \
+            --jq '.workflow_run.id')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "Could not determine staging workflow run."
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+          echo "Staging workflow run: $RUN_ID"
+
+      - name: Download promotion manifest
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ steps.promotion.outputs.promotion_name }}
+          path: promotion
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.staging.outputs.run_id }}
+
+      - name: Read promotion manifest
+        id: manifest
+        run: |
+          cat promotion/promotion-manifest.txt
+
+          BUILD_SHA=$(grep '^BUILD_SHA=' \
+            promotion/promotion-manifest.txt | cut -d= -f2)
+
+          CI_RUN_ID=$(grep '^CI_RUN_ID=' \
+            promotion/promotion-manifest.txt | cut -d= -f2)
+
+          ARTIFACT_NAME=$(grep '^ARTIFACT_NAME=' \
+            promotion/promotion-manifest.txt | cut -d= -f2)
+
+          if [ -z "$BUILD_SHA" ]; then
+            echo "BUILD_SHA is missing."
+            exit 1
+          fi
+
+          if [ -z "$CI_RUN_ID" ]; then
+            echo "CI_RUN_ID is missing."
+            exit 1
+          fi
+
+          if [ -z "$ARTIFACT_NAME" ]; then
+            echo "ARTIFACT_NAME is missing."
+            exit 1
+          fi
+
+          echo "build_sha=$BUILD_SHA" >> "$GITHUB_OUTPUT"
+          echo "ci_run_id=$CI_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download production artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ steps.manifest.outputs.artifact_name }}
+          path: production-artifact
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.manifest.outputs.ci_run_id }}
+
+      - name: Verify production artifact
+        env:
+          BUILD_SHA: ${{ steps.manifest.outputs.build_sha }}
+          ARTIFACT_NAME: ${{ steps.manifest.outputs.artifact_name }}
+        run: |
+          test -f "production-artifact/server-1.0-SNAPSHOT.jar"
+
+          echo "Production deployment"
+          echo "Build SHA: $BUILD_SHA"
+          echo "Artifact: $ARTIFACT_NAME"
+
+          echo "Artifact contents:"
+          find production-artifact -type f -maxdepth 2
+
+      - name: Deployment
+        env:
+          BUILD_SHA: ${{ steps.manifest.outputs.build_sha }}
+          ARTIFACT_NAME: ${{ steps.manifest.outputs.artifact_name }}
+        run: |
+          echo "Deploying artifact:"
+          echo "$ARTIFACT_NAME"
+
+          echo "Build:"
+          echo "$BUILD_SHA"
+
+          echo "Production deployment will be configured here."

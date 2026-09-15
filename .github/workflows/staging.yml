@@ -1,0 +1,159 @@
+name: Staging
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - staging
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    environment:
+      name: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv server/.venv
+          server/.venv/bin/python -m pip install \
+            -r server/integration/python/requirements.txt
+
+      - name: Identify promoted commit
+        id: build
+        env:
+          BUILD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "sha=$BUILD_SHA" >> "$GITHUB_OUTPUT"
+          echo "Promoted build SHA: $BUILD_SHA"
+
+      - name: Find CI run
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.build.outputs.sha }}
+        run: |
+          RUN_ID=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed&event=push&branch=main" \
+            --jq '.workflow_runs
+                  | map(select(.conclusion == "success"))
+                  | .[0].id')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful main CI run found for $SHA"
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+          echo "CI run: $RUN_ID"
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: server-${{ steps.build.outputs.sha }}
+          path: staging-artifact
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.ci.outputs.run_id }}
+
+      - name: Verify artifact
+        env:
+          BUILD_SHA: ${{ steps.build.outputs.sha }}
+        run: |
+          test -f "staging-artifact/server-1.0-SNAPSHOT.jar"
+
+          echo "Build SHA: $BUILD_SHA"
+          echo "Artifact: server-$BUILD_SHA"
+          echo "Artifact contents:"
+          find staging-artifact -type f -maxdepth 2
+
+      - name: Start staging server
+        run: |
+          java -jar staging-artifact/server-1.0-SNAPSHOT.jar \
+            > staging-server.log 2>&1 &
+
+          echo $! > staging-server.pid
+
+      - name: Wait for staging server
+        run: |
+          python - <<'PY'
+          import socket
+          import time
+
+          host = "127.0.0.1"
+          port = 42069
+          deadline = time.monotonic() + 10
+
+          while time.monotonic() < deadline:
+              try:
+                  with socket.create_connection((host, port), timeout=1):
+                      print("Staging server is ready.")
+                      break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              print("Staging server log:")
+              try:
+                  print(open("staging-server.log").read())
+              except FileNotFoundError:
+                  pass
+
+              raise SystemExit("Staging server did not start.")
+          PY
+
+      - name: Validate staging
+        run: |
+          server/.venv/bin/python -m pytest server/integration/python
+
+      - name: Create promotion manifest
+        env:
+          BUILD_SHA: ${{ steps.build.outputs.sha }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
+          STAGING_PR_NUMBER: ${{ github.event.pull_request.number }}
+          STAGING_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          cat > promotion-manifest.txt <<EOF
+          BUILD_SHA=${BUILD_SHA}
+          CI_RUN_ID=${CI_RUN_ID}
+          ARTIFACT_NAME=server-${BUILD_SHA}
+          STAGING_PR_NUMBER=${STAGING_PR_NUMBER}
+          STAGING_MERGE_SHA=${STAGING_MERGE_SHA}
+          EOF
+
+          cat promotion-manifest.txt
+
+      - name: Upload promotion manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-promotion-${{ github.event.pull_request.merge_commit_sha }}
+          path: promotion-manifest.txt
+          retention-days: 30
+
+      - name: Stop staging server
+        if: always()
+        run: |
+          if [ -f staging-server.pid ]; then
+            kill "$(cat staging-server.pid)" || true
+          fi
