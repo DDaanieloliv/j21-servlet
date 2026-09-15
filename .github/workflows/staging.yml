@@ -28,7 +28,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -44,10 +43,10 @@ jobs:
       - name: Identify promoted commit
         id: build
         env:
-          PROMOTED_SHA: ${{ github.event.pull_request.head.sha }}
+          BUILD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          echo "sha=$PROMOTED_SHA" >> "$GITHUB_OUTPUT"
-          echo "Promoted SHA: $PROMOTED_SHA"
+          echo "sha=$BUILD_SHA" >> "$GITHUB_OUTPUT"
+          echo "Promoted build SHA: $BUILD_SHA"
 
       - name: Find CI run
         id: ci
@@ -62,11 +61,12 @@ jobs:
                   | .[0].id')
 
           if [ -z "$RUN_ID" ]; then
-            echo "No successful main push CI run found for $SHA"
+            echo "No successful main CI run found for $SHA"
             exit 1
           fi
 
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
           echo "CI run: $RUN_ID"
 
       - name: Download build artifact
@@ -78,10 +78,16 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.ci.outputs.run_id }}
 
-      - name: Show artifact
+      - name: Verify artifact
+        env:
+          BUILD_SHA: ${{ steps.build.outputs.sha }}
         run: |
-          echo "Artifact:"
-          find staging-artifact -maxdepth 2 -type f
+          test -f "staging-artifact/server-1.0-SNAPSHOT.jar"
+
+          echo "Build SHA: $BUILD_SHA"
+          echo "Artifact: server-$BUILD_SHA"
+          echo "Artifact contents:"
+          find staging-artifact -type f -maxdepth 2
 
       - name: Start staging server
         run: |
@@ -108,6 +114,12 @@ jobs:
               except OSError:
                   time.sleep(0.1)
           else:
+              print("Staging server log:")
+              try:
+                  print(open("staging-server.log").read())
+              except FileNotFoundError:
+                  pass
+
               raise SystemExit("Staging server did not start.")
           PY
 
@@ -119,11 +131,15 @@ jobs:
         env:
           BUILD_SHA: ${{ steps.build.outputs.sha }}
           CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
+          STAGING_PR_NUMBER: ${{ github.event.pull_request.number }}
+          STAGING_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           cat > promotion-manifest.txt <<EOF
           BUILD_SHA=${BUILD_SHA}
           CI_RUN_ID=${CI_RUN_ID}
           ARTIFACT_NAME=server-${BUILD_SHA}
+          STAGING_PR_NUMBER=${STAGING_PR_NUMBER}
+          STAGING_MERGE_SHA=${STAGING_MERGE_SHA}
           EOF
 
           cat promotion-manifest.txt
@@ -131,8 +147,9 @@ jobs:
       - name: Upload promotion manifest
         uses: actions/upload-artifact@v4
         with:
-          name: staging-promotion-${{ steps.build.outputs.sha }}
+          name: staging-promotion-${{ github.event.pull_request.merge_commit_sha }}
           path: promotion-manifest.txt
+          retention-days: 30
 
       - name: Stop staging server
         if: always()
