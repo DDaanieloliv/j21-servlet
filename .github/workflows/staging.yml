@@ -56,13 +56,13 @@ jobs:
           SHA: ${{ steps.build.outputs.sha }}
         run: |
           RUN_ID=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed" \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed&event=push&branch=main" \
             --jq '.workflow_runs
                   | map(select(.conclusion == "success"))
                   | .[0].id')
 
           if [ -z "$RUN_ID" ]; then
-            echo "No successful CI run found for $SHA"
+            echo "No successful main push CI run found for $SHA"
             exit 1
           fi
 
