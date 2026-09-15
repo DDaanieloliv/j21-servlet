@@ -12,6 +12,10 @@ on:
       - staging
       - production
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   test:
     name: CI
@@ -49,3 +53,4 @@ jobs:
           name: server-${{ github.sha }}
           path: server/target/server-1.0-SNAPSHOT.jar
           if-no-files-found: error
+          retention-days: 30
