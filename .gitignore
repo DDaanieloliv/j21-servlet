@@ -86,3 +86,9 @@ buildNumber.properties
 hs_err_pid*
 .settings/
 
+
+# compiled artifacts
+target/
+
+# python virtual environment 
+.venv

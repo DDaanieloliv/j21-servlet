@@ -10,8 +10,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>http-processor</module>
-        <module>http</module>
+        <module>path-table</module>
+        <module>server</module>
     </modules>
 
     <properties>
