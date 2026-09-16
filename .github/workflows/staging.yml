@@ -46,6 +46,7 @@ jobs:
           BUILD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           echo "sha=$BUILD_SHA" >> "$GITHUB_OUTPUT"
+
           echo "Promoted build SHA: $BUILD_SHA"
 
       - name: Find CI run
@@ -86,8 +87,9 @@ jobs:
 
           echo "Build SHA: $BUILD_SHA"
           echo "Artifact: server-$BUILD_SHA"
+
           echo "Artifact contents:"
-          find staging-artifact -type f -maxdepth 2
+          find staging-artifact -maxdepth 2 -type f
 
       - name: Start staging server
         run: |

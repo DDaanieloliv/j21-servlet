@@ -1,9 +1,7 @@
 name: Production
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - production
 
@@ -11,69 +9,114 @@ permissions:
   actions: read
   contents: read
 
+concurrency:
+  group: production
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     environment:
       name: production
 
     steps:
-      - name: Identify staging promotion
+      - name: Show production commit
+        run: |
+          echo "Production deployment"
+          echo "Commit: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+
+      - name: Find promotion PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCTION_SHA: ${{ github.sha }}
+        run: |
+          echo "Finding PR associated with production commit..."
+
+          PR_JSON=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/commits/${PRODUCTION_SHA}/pulls")
+
+          PR_COUNT=$(echo "$PR_JSON" | jq 'length')
+
+          if [ "$PR_COUNT" -eq 0 ]; then
+            echo "No pull request found for production commit."
+            exit 1
+          fi
+
+          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.[0].head.sha')
+          HEAD_REF=$(echo "$PR_JSON" | jq -r '.[0].head.ref')
+          BASE_REF=$(echo "$PR_JSON" | jq -r '.[0].base.ref')
+
+          echo "Promotion PR: #$PR_NUMBER"
+          echo "Head branch: $HEAD_REF"
+          echo "Head SHA: $HEAD_SHA"
+          echo "Base branch: $BASE_REF"
+
+          if [ "$BASE_REF" != "production" ]; then
+            echo "Associated PR does not target production."
+            exit 1
+          fi
+
+          if [ "$HEAD_REF" != "staging" ]; then
+            echo "Associated PR does not originate from staging."
+            exit 1
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "staging_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Find staging promotion
         id: promotion
         env:
           GH_TOKEN: ${{ github.token }}
-          STAGING_MERGE_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_SHA: ${{ steps.pr.outputs.staging_sha }}
         run: |
-          PROMOTION_NAME="staging-promotion-${STAGING_MERGE_SHA}"
+          PROMOTION_NAME="staging-promotion-${STAGING_SHA}"
 
           echo "Looking for:"
           echo "$PROMOTION_NAME"
 
-          ARTIFACT_ID=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PROMOTION_NAME}" \
-            --jq '.artifacts
-                  | map(select(.expired == false))
-                  | .[0].id')
+          ARTIFACT_JSON=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PROMOTION_NAME}&per_page=100")
 
-          if [ -z "$ARTIFACT_ID" ]; then
-            echo "No staging promotion found for $STAGING_MERGE_SHA"
+          ARTIFACT_ID=$(echo "$ARTIFACT_JSON" | jq -r \
+            '.artifacts
+             | map(select(.expired == false))
+             | .[0].id')
+
+          WORKFLOW_RUN_ID=$(echo "$ARTIFACT_JSON" | jq -r \
+            '.artifacts
+             | map(select(.expired == false))
+             | .[0].workflow_run.id')
+
+          if [ -z "$ARTIFACT_ID" ] || [ "$ARTIFACT_ID" = "null" ]; then
+            echo "No staging promotion artifact found."
             exit 1
           fi
 
-          echo "promotion_name=$PROMOTION_NAME" >> "$GITHUB_OUTPUT"
-          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
-
-          echo "Promotion artifact ID: $ARTIFACT_ID"
-
-      - name: Find staging workflow run
-        id: staging
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ARTIFACT_ID: ${{ steps.promotion.outputs.artifact_id }}
-        run: |
-          RUN_ID=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}" \
-            --jq '.workflow_run.id')
-
-          if [ -z "$RUN_ID" ]; then
+          if [ -z "$WORKFLOW_RUN_ID" ] || [ "$WORKFLOW_RUN_ID" = "null" ]; then
             echo "Could not determine staging workflow run."
             exit 1
           fi
 
-          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "Artifact ID: $ARTIFACT_ID"
+          echo "Staging workflow run: $WORKFLOW_RUN_ID"
 
-          echo "Staging workflow run: $RUN_ID"
+          echo "artifact_name=$PROMOTION_NAME" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
+          echo "workflow_run_id=$WORKFLOW_RUN_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Download promotion manifest
+      - name: Download staging promotion manifest
         uses: actions/download-artifact@v5
         with:
-          name: ${{ steps.promotion.outputs.promotion_name }}
+          name: ${{ steps.promotion.outputs.artifact_name }}
           path: promotion
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ steps.staging.outputs.run_id }}
+          run-id: ${{ steps.promotion.outputs.workflow_run_id }}
 
       - name: Read promotion manifest
         id: manifest
@@ -87,6 +130,9 @@ jobs:
             promotion/promotion-manifest.txt | cut -d= -f2)
 
           ARTIFACT_NAME=$(grep '^ARTIFACT_NAME=' \
+            promotion/promotion-manifest.txt | cut -d= -f2)
+
+          STAGING_MERGE_SHA=$(grep '^STAGING_MERGE_SHA=' \
             promotion/promotion-manifest.txt | cut -d= -f2)
 
           if [ -z "$BUILD_SHA" ]; then
@@ -104,11 +150,21 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$STAGING_MERGE_SHA" ]; then
+            echo "STAGING_MERGE_SHA is missing."
+            exit 1
+          fi
+
+          echo "BUILD_SHA=$BUILD_SHA"
+          echo "CI_RUN_ID=$CI_RUN_ID"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME"
+          echo "STAGING_MERGE_SHA=$STAGING_MERGE_SHA"
+
           echo "build_sha=$BUILD_SHA" >> "$GITHUB_OUTPUT"
           echo "ci_run_id=$CI_RUN_ID" >> "$GITHUB_OUTPUT"
           echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Download production artifact
+      - name: Download validated build artifact
         uses: actions/download-artifact@v5
         with:
           name: ${{ steps.manifest.outputs.artifact_name }}
@@ -117,29 +173,26 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.manifest.outputs.ci_run_id }}
 
-      - name: Verify production artifact
+      - name: Verify artifact
         env:
           BUILD_SHA: ${{ steps.manifest.outputs.build_sha }}
           ARTIFACT_NAME: ${{ steps.manifest.outputs.artifact_name }}
         run: |
           test -f "production-artifact/server-1.0-SNAPSHOT.jar"
 
-          echo "Production deployment"
+          echo "Artifact being promoted to production:"
           echo "Build SHA: $BUILD_SHA"
           echo "Artifact: $ARTIFACT_NAME"
 
           echo "Artifact contents:"
-          find production-artifact -type f -maxdepth 2
+          find production-artifact -maxdepth 2 -type f
 
-      - name: Deployment
+      - name: Deploy
         env:
           BUILD_SHA: ${{ steps.manifest.outputs.build_sha }}
           ARTIFACT_NAME: ${{ steps.manifest.outputs.artifact_name }}
         run: |
-          echo "Deploying artifact:"
-          echo "$ARTIFACT_NAME"
-
-          echo "Build:"
-          echo "$BUILD_SHA"
-
           echo "Production deployment will be configured here."
+
+          echo "Artifact: $ARTIFACT_NAME"
+          echo "Build SHA: $BUILD_SHA"
