@@ -5,13 +5,13 @@
 
   <parent>
 	  <groupId>io.ddaaniel</groupId>
-	  <artifactId>httpFROMtcp-parent</artifactId>
+	  <artifactId>j21-servlet-parent</artifactId>
 	  <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>server</artifactId>
+  <artifactId>servlet</artifactId>
 
-  <name>httpFROMtcp</name>
+  <name>j21-servlet</name>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 
@@ -35,7 +35,7 @@
   <dependencies>
 	  <dependency>
 		  <groupId>io.ddaaniel</groupId>
-		  <artifactId>path-table</artifactId>
+		  <artifactId>table</artifactId>
 		  <version>1.0-SNAPSHOT</version>
 		  <scope>provided</scope>
 	  </dependency>
@@ -101,7 +101,7 @@
 				  <annotationProcessorPaths>
 					  <path>
 						  <groupId>io.ddaaniel</groupId>
-						  <artifactId>path-table</artifactId>
+						  <artifactId>table</artifactId>
 						  <version>1.0-SNAPSHOT</version>
 					  </path>
 				  </annotationProcessorPaths>

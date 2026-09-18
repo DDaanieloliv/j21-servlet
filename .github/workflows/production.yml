@@ -1,7 +1,9 @@
 name: Production
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - production
 
@@ -15,66 +17,46 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     environment:
       name: production
 
     steps:
-      - name: Show production commit
+      - name: Show production promotion
         run: |
           echo "Production deployment"
-          echo "Commit: ${{ github.sha }}"
-          echo "Ref: ${{ github.ref }}"
+          echo "PR: #${{ github.event.pull_request.number }}"
+          echo "Source branch: ${{ github.event.pull_request.head.ref }}"
+          echo "Target branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Production merge SHA: ${{ github.event.pull_request.merge_commit_sha }}"
+          echo "GITHUB_REF: ${{ github.ref }}"
 
-      - name: Find promotion PR
-        id: pr
+      - name: Validate promotion PR
         env:
-          GH_TOKEN: ${{ github.token }}
-          PRODUCTION_SHA: ${{ github.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          echo "Finding PR associated with production commit..."
-
-          PR_JSON=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/commits/${PRODUCTION_SHA}/pulls")
-
-          PR_COUNT=$(echo "$PR_JSON" | jq 'length')
-
-          if [ "$PR_COUNT" -eq 0 ]; then
-            echo "No pull request found for production commit."
+          if [ "$HEAD_REF" != "staging" ]; then
+            echo "Promotion PR must originate from staging."
             exit 1
           fi
-
-          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
-          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.[0].head.sha')
-          HEAD_REF=$(echo "$PR_JSON" | jq -r '.[0].head.ref')
-          BASE_REF=$(echo "$PR_JSON" | jq -r '.[0].base.ref')
-
-          echo "Promotion PR: #$PR_NUMBER"
-          echo "Head branch: $HEAD_REF"
-          echo "Head SHA: $HEAD_SHA"
-          echo "Base branch: $BASE_REF"
 
           if [ "$BASE_REF" != "production" ]; then
-            echo "Associated PR does not target production."
+            echo "Promotion PR must target production."
             exit 1
           fi
 
-          if [ "$HEAD_REF" != "staging" ]; then
-            echo "Associated PR does not originate from staging."
-            exit 1
-          fi
+          echo "Valid promotion: staging -> production"
 
-          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "staging_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-
-      - name: Find staging promotion
+      - name: Identify staging promotion
         id: promotion
         env:
           GH_TOKEN: ${{ github.token }}
-          STAGING_SHA: ${{ steps.pr.outputs.staging_sha }}
+          STAGING_MERGE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          PROMOTION_NAME="staging-promotion-${STAGING_SHA}"
+          PROMOTION_NAME="staging-promotion-${STAGING_MERGE_SHA}"
 
           echo "Looking for:"
           echo "$PROMOTION_NAME"
