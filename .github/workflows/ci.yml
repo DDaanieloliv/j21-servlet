@@ -40,8 +40,8 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m venv servlet/.venv
-          sevlet/.venv/bin/python -m pip install \
-            -r sevlet/integration/python/requirements.txt
+          servlet/.venv/bin/python -m pip install \
+            -r servlet/integration/python/requirements.txt
 
       - name: Run tests
         run: mvn verify
