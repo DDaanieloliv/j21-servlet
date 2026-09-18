@@ -40,8 +40,8 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m venv server/.venv
-          server/.venv/bin/python -m pip install \
-            -r server/integration/python/requirements.txt
+          sevlet/.venv/bin/python -m pip install \
+            -r sevlet/integration/python/requirements.txt
 
       - name: Run tests
         run: mvn verify
@@ -50,7 +50,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
-          name: server-${{ github.sha }}
-          path: server/target/server-1.0-SNAPSHOT.jar
+          name: servlet-${{ github.sha }}
+          path: servlet/target/servlet-1.0-SNAPSHOT.jar
           if-no-files-found: error
           retention-days: 30
