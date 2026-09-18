@@ -92,3 +92,4 @@ target/
 
 # python virtual environment 
 .venv
+.pytest_cache/
