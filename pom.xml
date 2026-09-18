@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>path-table</module>
+        <module>table</module>
         <module>servlet</module>
     </modules>
 

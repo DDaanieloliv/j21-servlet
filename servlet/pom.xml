@@ -9,7 +9,7 @@
 	  <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>server</artifactId>
+  <artifactId>servlet</artifactId>
 
   <name>j21-servlet</name>
   <!-- FIXME change it to the project's website -->
@@ -35,7 +35,7 @@
   <dependencies>
 	  <dependency>
 		  <groupId>io.ddaaniel</groupId>
-		  <artifactId>path-table</artifactId>
+		  <artifactId>table</artifactId>
 		  <version>1.0-SNAPSHOT</version>
 		  <scope>provided</scope>
 	  </dependency>

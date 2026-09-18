@@ -6,7 +6,7 @@
 
   <parent>
       <groupId>io.ddaaniel</groupId>
-      <artifactId>j12-servlet-parent</artifactId>
+      <artifactId>j21-servlet-parent</artifactId>
       <version>1.0-SNAPSHOT</version>
   </parent>
 
