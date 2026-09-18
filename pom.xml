@@ -5,13 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.ddaaniel</groupId>
-    <artifactId>httpFROMtcp-parent</artifactId>
+    <artifactId>j21-servlet-parent</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
         <module>path-table</module>
-        <module>server</module>
+        <module>servlet</module>
     </modules>
 
     <properties>
